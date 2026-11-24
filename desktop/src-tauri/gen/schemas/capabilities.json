@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default permissions for VCamp desktop","local":true,"windows":["main"],"permissions":["core:default","shell:allow-open","autostart:default","window-state:default"]}}

@@ -1,0 +1,22 @@
+[package]
+name = "vcamp-desktop"
+version = "1.0.0"
+description = "VCamp Native 3D AI Desktop Companion"
+authors = ["VCamp Team"]
+edition = "2021"
+
+[lib]
+name = "vcamp_desktop_lib"
+crate-type = ["staticlib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.2", features = [] }
+
+[dependencies]
+tauri = { version = "2.2", features = ["tray-icon"] }
+tauri-plugin-shell = "2.2"
+tauri-plugin-autostart = "2.2"
+tauri-plugin-window-state = "2.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.38", features = ["full"] }
