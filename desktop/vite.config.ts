@@ -13,6 +13,24 @@ export default defineConfig(async () => ({
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   // prevent vite from obscuring rust errors
   clearScreen: false,
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three') || id.includes('node_modules/@react-three')) {
+            return 'three-engine';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'ui-icons';
+          }
+          if (id.includes('node_modules/react') || id.includes('node_modules/zustand')) {
+            return 'react-vendor';
+          }
+        },
+      },
+    },
+  },
   // tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,

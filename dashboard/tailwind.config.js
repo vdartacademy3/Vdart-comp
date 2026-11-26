@@ -8,11 +8,17 @@ export default {
     extend: {
       colors: {
         vcamp: {
-          dark: '#080d1a',
-          navy: '#0f172a',
-          surface: '#1e293b',
-          cyan: '#06b6d4',
-          glow: '#00f2fe',
+          bg: '#FFFFFF',
+          surface: '#F8FAFC',
+          primary: '#1769D2',
+          primaryHover: '#1254A8',
+          secondary: '#EAF3FF',
+          text: '#172B4D',
+          muted: '#64748B',
+          border: '#E2E8F0',
+          success: '#16A34A',
+          warning: '#D97706',
+          error: '#DC2626',
         }
       }
     },

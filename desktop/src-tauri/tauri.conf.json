@@ -14,8 +14,9 @@
       {
         "title": "VCamp",
         "label": "main",
-        "width": 216,
-        "height": 322,
+        "width": 480,
+        "height": 620,
+        "center": true,
         "resizable": true,
         "transparent": true,
         "decorations": false,

@@ -18,7 +18,13 @@ export const CompanionManagementModule: React.FC = () => {
   const [personalityTone, setPersonalityTone] = useState('empathetic');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState('humanoid_robot.glb');
-  const [availableModels, setAvailableModels] = useState<string[]>(['humanoid_robot.glb', 'avatar_female.glb', 'minimal_drone.glb']);
+  const [availableModels, setAvailableModels] = useState<string[]>([
+    'vcamp_robot (procedural)',
+    'Athletic_man.glb',
+    'humanoid_robot.glb',
+    'avatar_female.glb',
+    'minimal_drone.glb',
+  ]);
   
   const [uploading, setUploading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -29,11 +35,11 @@ export const CompanionManagementModule: React.FC = () => {
       const data = await apiClient.get('/companion/profile');
       if (data) {
         setProfile(data);
-        setCompanionName(data.name || 'VCamp Companion');
+        setCompanionName(data.companion_name || 'VCamp Companion');
         setPersonalityTone(data.personality_tone || 'empathetic');
         setSystemPrompt(data.system_prompt || '');
-        if (data.active_model_url) {
-          setSelectedModel(data.active_model_url);
+        if (data.selected_character_id) {
+          setSelectedModel(data.selected_character_id);
         }
       }
     } catch (e) {
@@ -50,10 +56,10 @@ export const CompanionManagementModule: React.FC = () => {
     setError(null);
     try {
       await apiClient.put('/companion/profile', {
-        name: companionName,
+        companion_name: companionName,
         personality_tone: personalityTone,
         system_prompt: systemPrompt,
-        active_model_url: selectedModel,
+        selected_character_id: selectedModel,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

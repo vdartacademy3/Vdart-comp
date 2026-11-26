@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { CompanionModel } from './CompanionModel';
+import { GlbCharacterModel } from './GlbCharacterModel';
 import { useCompanionStore } from '../stores/companionStore';
 import { desktopMovementService } from '../services/desktopMovementService';
 
@@ -9,12 +10,22 @@ interface CompanionSceneProps {
 }
 
 export const CompanionScene: React.FC<CompanionSceneProps> = ({ onRobotClick }) => {
-  const { state, setState, isChatOpen, setIsChatOpen, isSleeping, setIsSleeping, triggerAction } = useCompanionStore();
+  const {
+    state,
+    setState,
+    isChatOpen,
+    setIsChatOpen,
+    isSleeping,
+    setIsSleeping,
+    triggerAction,
+    selectedCharacterId,
+    characterLoadStatus,
+  } = useCompanionStore();
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ startX: number; startY: number; time: number } | null>(null);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Interruption: Clicking or pressing down on the robot immediately halts any autonomous movement
+    // Interruption: Clicking or pressing down on the companion immediately halts any autonomous movement
     desktopMovementService.stopMovement();
 
     dragRef.current = {
@@ -73,6 +84,8 @@ export const CompanionScene: React.FC<CompanionSceneProps> = ({ onRobotClick }) 
     dragRef.current = null;
   }, [state, setState]);
 
+  const isGlbCharacter = selectedCharacterId !== 'vcamp_robot';
+
   return (
     <div
       className="relative w-full h-full cursor-grab active:cursor-grabbing select-none"
@@ -83,6 +96,14 @@ export const CompanionScene: React.FC<CompanionSceneProps> = ({ onRobotClick }) 
       onPointerLeave={handlePointerLeave}
       title="VCamp 3D Companion • Click to talk • Click and drag anywhere on desktop"
     >
+      {isGlbCharacter && characterLoadStatus === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div className="px-2.5 py-1 rounded-full bg-slate-950/85 border border-cyan-500/40 text-[10px] text-cyan-300 animate-pulse">
+            Loading 3D Character...
+          </div>
+        </div>
+      )}
+
       <Canvas
         camera={{ position: [0, 0, 4.0], fov: 40, near: 0.1, far: 50 }}
         gl={{
@@ -93,14 +114,19 @@ export const CompanionScene: React.FC<CompanionSceneProps> = ({ onRobotClick }) 
         }}
         style={{ background: 'transparent' }}
       >
-        {/* Cinematic Studio Lighting */}
-        <ambientLight intensity={0.75} />
-        <directionalLight position={[3, 4, 4]} intensity={1.5} castShadow />
-        <directionalLight position={[-3, 2, -2]} intensity={0.6} color="#00f2fe" />
-        <pointLight position={[0, -1, 1]} intensity={0.8} color="#06b6d4" />
+        {/* Studio & Natural Humanoid Lighting */}
+        <ambientLight intensity={isGlbCharacter ? 0.95 : 0.75} />
+        <hemisphereLight args={['#e2e8f0', '#1e293b', isGlbCharacter ? 0.85 : 0.3]} />
+        <directionalLight position={[3, 4, 4]} intensity={isGlbCharacter ? 1.65 : 1.5} castShadow />
+        <directionalLight position={[-3, 2, -2]} intensity={0.65} color="#00f2fe" />
+        <pointLight position={[0, -1, 1]} intensity={0.6} color="#06b6d4" />
 
-        {/* 3D Robot Character */}
-        <CompanionModel pointerPosition={pointer} />
+        {/* Active 3D Companion Character */}
+        {isGlbCharacter ? (
+          <GlbCharacterModel characterId={selectedCharacterId} enableDesktopTransform />
+        ) : (
+          <CompanionModel pointerPosition={pointer} />
+        )}
       </Canvas>
     </div>
   );

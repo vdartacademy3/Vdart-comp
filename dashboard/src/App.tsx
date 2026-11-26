@@ -63,7 +63,7 @@ export const App: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
+    <div className="min-h-screen bg-white text-vcamp-text flex flex-col font-sans">
       {/* Login Gate Modal */}
       <LoginModal
         isOpen={showLoginModal || !isAuthenticated}
@@ -71,20 +71,20 @@ export const App: React.FC = () => {
       />
 
       {/* Top Enterprise Header */}
-      <header className="border-b border-cyan-500/20 bg-slate-900/90 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
+      <header className="border-b border-vcamp-border bg-white px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-900 via-cyan-600 to-blue-500 flex items-center justify-center text-white font-extrabold text-lg shadow-lg shadow-cyan-950/60 border border-cyan-400/40">
+          <div className="w-10 h-10 rounded-xl bg-vcamp-primary flex items-center justify-center text-white font-extrabold text-lg shadow-sm">
             V
           </div>
           <div>
-            <h1 className="text-base font-bold text-white flex items-center gap-2">
-              VCamp Enterprise Intelligence Platform
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/40 font-semibold uppercase tracking-wider">
-                Production 2.0
+            <h1 className="text-base font-bold text-vcamp-text flex items-center gap-2">
+              VDart Companion (VCamp) Enterprise Console
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-vcamp-secondary text-vcamp-primary border border-blue-200 font-semibold uppercase tracking-wider">
+                v3.0
               </span>
             </h1>
-            <p className="text-[11px] text-slate-400">
-              Web Management Console • Multilingual Tamil + English Sentiment AI
+            <p className="text-[11px] text-vcamp-muted">
+              Privacy-Preserving Workplace Console • Multilingual Tamil, Tanglish &amp; English
             </p>
           </div>
         </div>
@@ -92,17 +92,17 @@ export const App: React.FC = () => {
         {/* User Badge & Actions */}
         <div className="flex items-center gap-3">
           {isAuthenticated && employee ? (
-            <div className="flex items-center gap-2.5 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs">
-              <div className="w-7 h-7 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold">
+            <div className="flex items-center gap-2.5 bg-slate-50 border border-vcamp-border rounded-xl px-3 py-1.5 text-xs">
+              <div className="w-7 h-7 rounded-lg bg-vcamp-secondary border border-blue-200 flex items-center justify-center text-vcamp-primary font-bold">
                 {employee.full_name?.charAt(0) || 'U'}
               </div>
               <div className="hidden sm:block">
-                <div className="font-semibold text-white leading-tight">{employee.full_name}</div>
-                <div className="text-[10px] text-cyan-400 font-mono leading-tight">{employee.role}</div>
+                <div className="font-semibold text-vcamp-text leading-tight">{employee.full_name}</div>
+                <div className="text-[10px] text-vcamp-primary font-mono leading-tight">{employee.role}</div>
               </div>
               <button
                 onClick={() => logout()}
-                className="ml-2 p-1.5 hover:text-rose-400 transition-colors rounded-lg hover:bg-slate-700/60"
+                className="ml-2 p-1.5 text-vcamp-muted hover:text-vcamp-error transition-colors rounded-lg hover:bg-red-50"
                 title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />
@@ -111,7 +111,7 @@ export const App: React.FC = () => {
           ) : (
             <button
               onClick={() => setShowLoginModal(true)}
-              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-md"
+              className="px-4 py-2 rounded-xl bg-vcamp-primary hover:bg-vcamp-primaryHover text-white font-semibold text-xs"
             >
               Sign In
             </button>
@@ -124,7 +124,7 @@ export const App: React.FC = () => {
         
         {/* Navigation Sidebar */}
         <nav className="col-span-12 lg:col-span-3 space-y-1">
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-2">
+          <div className="text-[11px] font-bold text-vcamp-muted uppercase tracking-wider px-3 mb-2">
             Navigation Modules
           </div>
 
@@ -137,8 +137,8 @@ export const App: React.FC = () => {
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                    ? 'bg-vcamp-secondary text-vcamp-primary border border-blue-200'
+                    : 'text-vcamp-muted hover:text-vcamp-text hover:bg-slate-50'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -147,20 +147,20 @@ export const App: React.FC = () => {
             );
           })}
 
-          <div className="pt-4 border-t border-slate-800/80 px-2 space-y-2">
-            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
-              <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
+          <div className="pt-4 border-t border-vcamp-border px-2 space-y-2">
+            <div className="p-3 rounded-xl bg-vcamp-secondary border border-blue-200 text-[11px] text-vcamp-text space-y-1">
+              <div className="flex items-center gap-1.5 text-vcamp-primary font-semibold">
                 <Sparkles className="w-3.5 h-3.5" /> Desktop Companion
               </div>
-              <p className="text-[10px] text-slate-500">
-                The desktop companion runs as a lightweight floating 3D avatar on your Windows desktop.
+              <p className="text-[10px] text-vcamp-muted">
+                The Windows desktop companion runs in compact floating mode and full workspace mode.
               </p>
             </div>
           </div>
         </nav>
 
         {/* Dynamic Module Content Viewport */}
-        <main className="col-span-12 lg:col-span-9 bg-slate-900/60 border border-cyan-500/20 rounded-2xl p-6 shadow-xl min-w-0">
+        <main className="col-span-12 lg:col-span-9 bg-slate-50 border border-vcamp-border rounded-2xl p-6 min-w-0">
           {activeTab === 'overview' && <OverviewModule />}
           {activeTab === 'employees' && <EmployeeManagementModule />}
           {activeTab === 'sentiment' && <SentimentAnalyticsModule />}

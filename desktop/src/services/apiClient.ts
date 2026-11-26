@@ -1,40 +1,74 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8000/api';
+const DEFAULT_BACKEND_URL =
+  ((import.meta as any).env?.VITE_BACKEND_URL as string) || 'http://127.0.0.1:8000/api';
+
+const BACKEND_URL_KEY = 'vcamp_backend_url';
+const TOKEN_KEY = 'vcamp_auth_token';
 
 class ApiClient {
   private token: string | null = null;
 
   constructor() {
-    this.token = localStorage.getItem('vcamp_auth_token');
+    try {
+      this.token = localStorage.getItem(TOKEN_KEY);
+    } catch {
+      this.token = null;
+    }
+  }
+
+  public getBaseUrl(): string {
+    try {
+      return (localStorage.getItem(BACKEND_URL_KEY) || DEFAULT_BACKEND_URL).replace(/\/+$/, '');
+    } catch {
+      return DEFAULT_BACKEND_URL;
+    }
+  }
+
+  public setBaseUrl(url: string): void {
+    const clean = (url || DEFAULT_BACKEND_URL).trim().replace(/\/+$/, '');
+    try {
+      localStorage.setItem(BACKEND_URL_KEY, clean);
+    } catch {}
   }
 
   public setToken(token: string | null) {
     this.token = token;
-    if (token) {
-      localStorage.setItem('vcamp_auth_token', token);
-    } else {
-      localStorage.removeItem('vcamp_auth_token');
-    }
+    try {
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    } catch {}
   }
 
   public getToken(): string | null {
     if (!this.token) {
-      this.token = localStorage.getItem('vcamp_auth_token');
+      try {
+        this.token = localStorage.getItem(TOKEN_KEY);
+      } catch {
+        this.token = null;
+      }
     }
     return this.token;
   }
 
+  public isLocalSession(): boolean {
+    const tok = this.getToken();
+    return !tok || tok.startsWith('local_');
+  }
+
   public async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {}),
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...((options.headers as Record<string, string>) || {}),
     };
 
     const token = this.getToken();
-    if (token) {
+    if (token && !token.startsWith('local_')) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const url = `${this.getBaseUrl()}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const response = await fetch(url, {
       ...options,
       headers,

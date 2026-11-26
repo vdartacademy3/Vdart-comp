@@ -1,15 +1,34 @@
 import { create } from 'zustand';
+import {
+  DEFAULT_CHARACTER_ID,
+  DEFAULT_CHARACTER_SETTINGS,
+  getCharacterById,
+} from '../characters/characterRegistry';
+import { mapLegacyActionToCanonical } from '../characters/animationMapping';
+import { AnimationClipDescriptor, CharacterSettings } from '../characters/types';
+import { animationController } from '../services/animationController';
+import { localDataService } from '../services/localDataService';
 
-export type CompanionAction = 
-  | 'idle' 
-  | 'walk' 
+export type CompanionAction =
+  | 'idle'
+  | 'walk'
   | 'run'
-  | 'play' 
-  | 'sleep' 
-  | 'greet' 
-  | 'listen' 
-  | 'think' 
-  | 'speak';
+  | 'play'
+  | 'sleep'
+  | 'greet'
+  | 'listen'
+  | 'think'
+  | 'speak'
+  | 'dance'
+  | 'jump'
+  | 'knockdown'
+  | 'laugh'
+  | 'laugh_hard'
+  | 'punch'
+  | 'push'
+  | 'talk'
+  | 'talk_gesture'
+  | 'wave';
 
 export type CompanionState = 
   | CompanionAction
@@ -130,6 +149,18 @@ interface CompanionStore {
   movementDirection: number; // 1 = right, -1 = left
   isHovering: boolean;
 
+  // Multi-Character Registry & Studio State
+  activeDashboardTab: string;
+  selectedCharacterId: string;
+  defaultCharacterId: string;
+  characterSettings: Record<string, CharacterSettings>;
+  characterDescriptors: AnimationClipDescriptor[];
+  characterLoadStatus: 'idle' | 'loading' | 'ready' | 'error';
+  characterLoadError: string | null;
+
+  setActiveDashboardTab: (tab: string) => void;
+  openCharacterStudio: () => void;
+
   setState: (state: CompanionState) => void;
   setCentralState: (state: CentralRobotState) => void;
   setRobotSize: (size: RobotSize) => void;
@@ -157,6 +188,13 @@ interface CompanionStore {
   setSpeechPitch: (pitch: number) => void;
   setSpeechVoice: (voice: string) => void;
   setLastPosition: (pos: { x: number; y: number }) => void;
+  setSelectedCharacterId: (id: string) => void;
+  setDefaultCharacterId: (id: string) => void;
+  updateCharacterSettings: (id: string, patch: Partial<CharacterSettings>) => void;
+  resetCharacterSettings: (id: string) => void;
+  setCharacterDescriptors: (descriptors: AnimationClipDescriptor[]) => void;
+  setCharacterLoadStatus: (status: 'idle' | 'loading' | 'ready' | 'error', error?: string | null) => void;
+  hydrateDesktopPersistence: () => Promise<void>;
 }
 
 const DEFAULT_SYSTEM_PROMPT = `You are VCamp, a friendly, ultra-intelligent 3D personal AI desktop companion for Windows.
@@ -175,6 +213,37 @@ Language Guidelines:
 const DEFAULT_GROQ_API_KEY = ((import.meta as any).env?.VITE_GROQ_API_KEY as string) || '';
 const DEFAULT_GROQ_MODEL = ((import.meta as any).env?.VITE_GROQ_MODEL as string) || 'qwen/qwen3.8-27b';
 
+const CHAR_SELECTED_KEY = 'vcamp_selected_character';
+const CHAR_DEFAULT_KEY = 'vcamp_default_character';
+const CHAR_SETTINGS_KEY = 'vcamp_character_settings';
+
+function loadSavedCharacterId(key: string, fallback: string): string {
+  try {
+    const val = localStorage.getItem(key);
+    if (val) return getCharacterById(val).id;
+  } catch {}
+  return fallback;
+}
+
+function loadSavedCharacterSettings(): Record<string, CharacterSettings> {
+  try {
+    const raw = localStorage.getItem(CHAR_SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {}
+  return {};
+}
+
+const initialDefaultCharId = loadSavedCharacterId(CHAR_DEFAULT_KEY, DEFAULT_CHARACTER_ID);
+const initialSelectedCharId = loadSavedCharacterId(CHAR_SELECTED_KEY, initialDefaultCharId);
+const initialCharSettings = loadSavedCharacterSettings();
+
+if (initialCharSettings[initialSelectedCharId]?.animationSpeed) {
+  animationController.setPlaybackSpeed(initialCharSettings[initialSelectedCharId].animationSpeed);
+}
+
 export const useCompanionStore = create<CompanionStore>((set, get) => ({
   state: 'idle',
   centralState: 'IDLE',
@@ -187,8 +256,8 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
   isDashboardOpen: false,
   isRecording: false,
   isSpeaking: false,
-  hasCustomModel: false,
-  hasModelLoaded: false,
+  hasCustomModel: initialSelectedCharId !== 'vcamp_robot',
+  hasModelLoaded: initialSelectedCharId === 'vcamp_robot',
   modelError: null,
   activeLanguage: 'auto',
   groqApiKey: localStorage.getItem('vcamp_groq_api_key') || DEFAULT_GROQ_API_KEY,
@@ -205,8 +274,24 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
   jumpState: { isJumping: false, progress: 0 },
   movementDirection: 1,
   isHovering: false,
+  activeDashboardTab: 'overview',
+  selectedCharacterId: initialSelectedCharId,
+  defaultCharacterId: initialDefaultCharId,
+  characterSettings: initialCharSettings,
+  characterDescriptors: [],
+  characterLoadStatus: initialSelectedCharId === 'vcamp_robot' ? 'ready' : 'idle',
+  characterLoadError: null,
 
-  setState: (state) => set({ state }),
+  setState: (state) => {
+    set({ state });
+    if (state === 'idle') {
+      animationController.onAIProcessingEnd();
+    } else if (state === 'thinking') {
+      animationController.onAIProcessingStart();
+    } else if (state === 'listening') {
+      animationController.onMicStart();
+    }
+  },
   setRobotZ: (z) => {
     const clamped = Math.max(-2.0, Math.min(1.0, z));
     try {
@@ -282,6 +367,7 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
 
   triggerAction: (action, durationMs) => {
     if (action === 'sleep') {
+      animationController.returnToIdle('system');
       set({ 
         currentAction: 'sleep', 
         state: 'sleep', 
@@ -291,11 +377,14 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
       });
       return;
     }
-    set({ currentAction: action, state: action, isSleeping: false });
+    const mapped = mapLegacyActionToCanonical(action);
+    animationController.trigger(mapped, { source: 'system' });
+    set({ currentAction: action, state: action as CompanionState, isSleeping: false });
     if (durationMs && durationMs > 0) {
       setTimeout(() => {
         const stateNow = useCompanionStore.getState().currentAction;
         if (stateNow === action) {
+          animationController.returnToIdle('system');
           set({ currentAction: 'idle', state: 'idle', centralState: 'IDLE' });
         }
       }, durationMs);
@@ -348,41 +437,212 @@ export const useCompanionStore = create<CompanionStore>((set, get) => ({
 
   setIsChatOpen: (isChatOpen) => set({ isChatOpen }),
   setIsDashboardOpen: (isDashboardOpen) => set({ isDashboardOpen }),
-  setIsRecording: (isRecording) => set({ 
-    isRecording,
-    centralState: isRecording ? 'LISTENING' : (get().centralState === 'LISTENING' ? 'IDLE' : get().centralState),
-    currentEmotion: isRecording ? 'listening' : 'neutral'
-  }),
-  setIsSpeaking: (isSpeaking) => set({ 
-    isSpeaking,
-    centralState: isSpeaking ? 'SPEAKING' : (get().centralState === 'SPEAKING' ? 'IDLE' : get().centralState),
-    currentAction: isSpeaking ? 'speak' : (get().currentAction === 'speak' ? 'idle' : get().currentAction)
-  }),
+  setIsRecording: (isRecording) => {
+    if (isRecording) {
+      animationController.onMicStart();
+    } else {
+      animationController.onMicStop();
+    }
+    set({ 
+      isRecording,
+      centralState: isRecording ? 'LISTENING' : (get().centralState === 'LISTENING' ? 'IDLE' : get().centralState),
+      currentEmotion: isRecording ? 'listening' : 'neutral'
+    });
+  },
+  setIsSpeaking: (isSpeaking) => {
+    const prev = get().isSpeaking;
+    if (isSpeaking && !prev) {
+      animationController.onTTSStart();
+    } else if (!isSpeaking && prev) {
+      animationController.onTTSEnd();
+    }
+    set({ 
+      isSpeaking,
+      centralState: isSpeaking ? 'SPEAKING' : (get().centralState === 'SPEAKING' ? 'IDLE' : get().centralState),
+      currentAction: isSpeaking ? 'speak' : (get().currentAction === 'speak' ? 'idle' : get().currentAction)
+    });
+  },
   setHasCustomModel: (hasCustomModel) => set({ hasCustomModel }),
   setHasModelLoaded: (hasModelLoaded) => set({ hasModelLoaded }),
   setModelError: (modelError) => set({ modelError }),
   setActiveLanguage: (activeLanguage) => set({ activeLanguage }),
   setGroqApiKey: (groqApiKey) => {
     localStorage.setItem('vcamp_groq_api_key', groqApiKey);
+    void localDataService.saveItem('vcamp_ai_config', {
+      groqApiKey,
+      groqModel: get().groqModel,
+      systemPrompt: get().systemPrompt,
+      autoSpeak: get().autoSpeak,
+      speechVoice: get().speechVoice,
+    });
     set({ groqApiKey });
   },
   setGroqModel: (groqModel) => {
     localStorage.setItem('vcamp_groq_model', groqModel);
+    void localDataService.saveItem('vcamp_ai_config', {
+      groqApiKey: get().groqApiKey,
+      groqModel,
+      systemPrompt: get().systemPrompt,
+      autoSpeak: get().autoSpeak,
+      speechVoice: get().speechVoice,
+    });
     set({ groqModel });
   },
   setSystemPrompt: (systemPrompt) => {
     localStorage.setItem('vcamp_system_prompt', systemPrompt);
+    void localDataService.saveItem('vcamp_ai_config', {
+      groqApiKey: get().groqApiKey,
+      groqModel: get().groqModel,
+      systemPrompt,
+      autoSpeak: get().autoSpeak,
+      speechVoice: get().speechVoice,
+    });
     set({ systemPrompt });
   },
   setAutoSpeak: (autoSpeak) => {
     localStorage.setItem('vcamp_auto_speak', String(autoSpeak));
+    void localDataService.saveItem('vcamp_ai_config', {
+      groqApiKey: get().groqApiKey,
+      groqModel: get().groqModel,
+      systemPrompt: get().systemPrompt,
+      autoSpeak,
+      speechVoice: get().speechVoice,
+    });
     set({ autoSpeak });
   },
   setSpeechRate: (speechRate) => set({ speechRate }),
   setSpeechPitch: (speechPitch) => set({ speechPitch }),
   setSpeechVoice: (speechVoice) => {
     localStorage.setItem('vcamp_speech_voice', speechVoice);
+    void localDataService.saveItem('vcamp_ai_config', {
+      groqApiKey: get().groqApiKey,
+      groqModel: get().groqModel,
+      systemPrompt: get().systemPrompt,
+      autoSpeak: get().autoSpeak,
+      speechVoice,
+    });
     set({ speechVoice });
   },
   setLastPosition: (lastPosition) => set({ lastPosition }),
+  setActiveDashboardTab: (activeDashboardTab) => set({ activeDashboardTab }),
+  openCharacterStudio: () => set({ isDashboardOpen: true, activeDashboardTab: 'character_studio' }),
+  setSelectedCharacterId: (id) => {
+    const resolved = getCharacterById(id).id;
+    try {
+      localStorage.setItem(CHAR_SELECTED_KEY, resolved);
+    } catch {}
+    void localDataService.saveItem('vcamp_character_prefs', {
+      selectedCharacterId: resolved,
+      defaultCharacterId: get().defaultCharacterId,
+      characterSettings: get().characterSettings,
+    });
+    const charSpeed = get().characterSettings[resolved]?.animationSpeed ?? DEFAULT_CHARACTER_SETTINGS.animationSpeed;
+    animationController.reset('system');
+    animationController.setPlaybackSpeed(charSpeed);
+    set({
+      selectedCharacterId: resolved,
+      hasCustomModel: resolved !== 'vcamp_robot',
+      hasModelLoaded: resolved === 'vcamp_robot',
+      modelError: null,
+      characterLoadStatus: resolved === 'vcamp_robot' ? 'ready' : 'loading',
+      characterLoadError: null,
+    });
+  },
+  setDefaultCharacterId: (id) => {
+    const resolved = getCharacterById(id).id;
+    try {
+      localStorage.setItem(CHAR_DEFAULT_KEY, resolved);
+    } catch {}
+    void localDataService.saveItem('vcamp_character_prefs', {
+      selectedCharacterId: get().selectedCharacterId,
+      defaultCharacterId: resolved,
+      characterSettings: get().characterSettings,
+    });
+    set({ defaultCharacterId: resolved });
+  },
+  updateCharacterSettings: (id, patch) => {
+    const current = get().characterSettings[id] || { ...DEFAULT_CHARACTER_SETTINGS };
+    const updated: CharacterSettings = { ...current, ...patch };
+    const nextMap = { ...get().characterSettings, [id]: updated };
+    try {
+      localStorage.setItem(CHAR_SETTINGS_KEY, JSON.stringify(nextMap));
+    } catch {}
+    void localDataService.saveItem('vcamp_character_prefs', {
+      selectedCharacterId: get().selectedCharacterId,
+      defaultCharacterId: get().defaultCharacterId,
+      characterSettings: nextMap,
+    });
+    if (id === get().selectedCharacterId && typeof patch.animationSpeed === 'number') {
+      animationController.setPlaybackSpeed(patch.animationSpeed);
+    }
+    set({ characterSettings: nextMap });
+  },
+  resetCharacterSettings: (id) => {
+    const nextMap = { ...get().characterSettings, [id]: { ...DEFAULT_CHARACTER_SETTINGS } };
+    try {
+      localStorage.setItem(CHAR_SETTINGS_KEY, JSON.stringify(nextMap));
+    } catch {}
+    void localDataService.saveItem('vcamp_character_prefs', {
+      selectedCharacterId: get().selectedCharacterId,
+      defaultCharacterId: get().defaultCharacterId,
+      characterSettings: nextMap,
+    });
+    if (id === get().selectedCharacterId) {
+      animationController.reset('studio');
+    }
+    set({ characterSettings: nextMap });
+  },
+  setCharacterDescriptors: (characterDescriptors) => {
+    animationController.setDescriptors(characterDescriptors);
+    set({ characterDescriptors });
+  },
+  setCharacterLoadStatus: (characterLoadStatus, characterLoadError = null) =>
+    set({
+      characterLoadStatus,
+      characterLoadError,
+      hasModelLoaded: characterLoadStatus === 'ready',
+      modelError: characterLoadError,
+    }),
+  hydrateDesktopPersistence: async () => {
+    const aiCfg = await localDataService.loadItem<{
+      groqApiKey?: string;
+      groqModel?: string;
+      systemPrompt?: string;
+      autoSpeak?: boolean;
+      speechVoice?: string;
+    } | null>('vcamp_ai_config', null);
+    if (aiCfg) {
+      set({
+        groqApiKey: aiCfg.groqApiKey ?? get().groqApiKey,
+        groqModel: aiCfg.groqModel ?? get().groqModel,
+        systemPrompt: aiCfg.systemPrompt ?? get().systemPrompt,
+        autoSpeak: typeof aiCfg.autoSpeak === 'boolean' ? aiCfg.autoSpeak : get().autoSpeak,
+        speechVoice: aiCfg.speechVoice ?? get().speechVoice,
+      });
+    }
+    const charPrefs = await localDataService.loadItem<{
+      selectedCharacterId?: string;
+      defaultCharacterId?: string;
+      characterSettings?: Record<string, CharacterSettings>;
+    } | null>('vcamp_character_prefs', null);
+    if (charPrefs) {
+      const resolvedSelected = charPrefs.selectedCharacterId
+        ? getCharacterById(charPrefs.selectedCharacterId).id
+        : get().selectedCharacterId;
+      const resolvedDefault = charPrefs.defaultCharacterId
+        ? getCharacterById(charPrefs.defaultCharacterId).id
+        : get().defaultCharacterId;
+      const mergedSettings = charPrefs.characterSettings || get().characterSettings;
+      if (mergedSettings[resolvedSelected]?.animationSpeed) {
+        animationController.setPlaybackSpeed(mergedSettings[resolvedSelected].animationSpeed);
+      }
+      set({
+        selectedCharacterId: resolvedSelected,
+        defaultCharacterId: resolvedDefault,
+        characterSettings: mergedSettings,
+        hasCustomModel: resolvedSelected !== 'vcamp_robot',
+        hasModelLoaded: resolvedSelected === 'vcamp_robot',
+      });
+    }
+  },
 }));

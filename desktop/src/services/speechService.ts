@@ -1,5 +1,6 @@
 import { detectLanguage } from './groqService';
 import { useCompanionStore } from '../stores/companionStore';
+import { animationController } from './animationController';
 
 export type VoiceCategory = 'indian-english' | 'tamil' | 'hindi' | 'english-other' | 'other';
 
@@ -153,6 +154,7 @@ export class TextToSpeechService {
       rate?: number;
       pitch?: number;
       voiceName?: string;
+      expressive?: boolean;
       onStart?: () => void;
       onEnd?: () => void;
       onError?: (err: unknown) => void;
@@ -236,12 +238,15 @@ export class TextToSpeechService {
     }
 
     utterance.onstart = () => {
+      const isExpressive = options.expressive ?? (text.length > 110 || /[!?]/.test(text));
+      animationController.onTTSStart({ expressive: isExpressive });
       useCompanionStore.getState().setIsSpeaking(true);
       options.onStart?.();
     };
 
     utterance.onend = () => {
       this.currentUtterance = null;
+      animationController.onTTSEnd();
       useCompanionStore.getState().setIsSpeaking(false);
       options.onEnd?.();
     };
@@ -249,6 +254,7 @@ export class TextToSpeechService {
     utterance.onerror = (e) => {
       console.error('Speech synthesis error:', e);
       this.currentUtterance = null;
+      animationController.onTTSEnd();
       useCompanionStore.getState().setIsSpeaking(false);
       options.onError?.(e);
       options.onEnd?.();
@@ -261,6 +267,7 @@ export class TextToSpeechService {
     if (this.synth) {
       this.synth.cancel();
       this.currentUtterance = null;
+      animationController.onTTSEnd();
       useCompanionStore.getState().setIsSpeaking(false);
     }
   }

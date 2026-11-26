@@ -4,54 +4,59 @@
 
 - **Operating System:** Microsoft Windows 10 (64-bit) or Windows 11
 - **Runtime:** Microsoft Edge WebView2 (pre-installed on Windows 10/11)
-- **Audio Hardware:** Built-in or external Microphone for voice input, and speakers/headphones for speech output
-- **AI Engine:** Groq Cloud API key (free at [https://console.groq.com](https://console.groq.com))
+- **Hardware:** 8 GB RAM or higher recommended; integrated GPU supported
+- **Audio Hardware:** Built-in or external Microphone for push-to-talk voice input, and speakers/headphones for voice output
+- **AI Mode:** Offline deterministic mode out of the box, or bring your own Groq / OpenAI-compatible API key in Settings
 
 ---
 
 ## 2. Architecture Overview
 
-VCamp is engineered as a **native Windows 3D desktop companion** built on:
-- **Tauri 2 & Rust:** Native borderless, transparent, always-on-top desktop window management and background system tray process.
-- **Three.js & React Three Fiber:** High-performance 3D character rendering with cinematic PBR materials and procedural skeletal animations.
-- **Groq AI Integration:** Ultra-low-latency Llama 3.3 70B & Llama 3.1 8B for natural conversational reasoning across Tamil, English, and Tanglish.
-- **Groq Whisper:** Multilingual speech-to-text transcription engine.
-- **Web Speech & Windows TTS:** Native voice synthesis with automatic language detection.
-- **Multi-Category Sentiment Engine:** Real-time emotion classification mapping to robot expressions.
+VCamp v3.0 is engineered as a standalone **Windows 3D desktop companion** with an optional FastAPI enterprise backend:
+- **Tauri 2 & Rust:** Borderless, transparent, always-on-top compact mode + expandable corporate workspace + Windows background system tray, storing local user preferences in `%APPDATA%\VCamp\data`.
+- **Three.js & React Three Fiber:** Modular 3D character engine supporting `VCamp Robot` and `Athletic_man` (13 animation states with smooth crossfades).
+- **Modular AI Conversation Engine:** Supports Groq Cloud, OpenAI-compatible endpoints, and deterministic Offline mode across English, Tamil, and Tanglish.
+- **Consent-First Sentiment & Question Engine:** Non-diagnostic affective detection with user consent controls, one-click history erasure, cooldowns, and quiet hours.
+- **Optional Enterprise Backend (`backend/`):** FastAPI + SQLAlchemy SQLite with Alembic-style migrations (`schema_migrations`), Argon2id auth, JWT sessions, RBAC, and k-anonymity HR department aggregates.
 
 ---
 
 ## 3. Quick Start (Development & Testing)
 
 ### A. Prerequisites
-1. **Node.js:** v18+ or v20+
-2. **Rust & Cargo:** v1.75+ (Target `x86_64-pc-windows-gnu` or `x86_64-pc-windows-msvc`)
+1. **Node.js:** v18+ or v20+ (tested on Node v24.15.0)
+2. **Rust & Cargo:** v1.75+ (tested on `rustc 1.100.0` `x86_64-pc-windows-msvc`)
+3. **Python (optional for Enterprise Backend):** Python 3.11+ with dependencies from `backend/requirements.txt`
 
 ### B. Running Frontend Dev Server
 ```powershell
-cd "D:\Aathil\sentiment analysis\VCamp\desktop"
+cd "d:\Aathil\Vdart-comp\desktop"
 npm run dev
 ```
-Open `http://127.0.0.1:1420` in any browser to test the interactive 3D companion scene, speech recognition, sentiment detection, and Groq chat directly.
+Open `http://127.0.0.1:1420` to run the companion in browser preview.
 
-### C. Building Native Windows Production Bundle
+### C. Running Optional Enterprise Backend
 ```powershell
-cd "D:\Aathil\sentiment analysis\VCamp\desktop"
-npm run build
-npm run tauri build
+cd "d:\Aathil\Vdart-comp\backend"
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-This generates:
-- `target/release/vcamp-desktop.exe` (Portable native Windows executable)
-- `target/release/bundle/nsis/VCamp-Setup.exe` (Windows Installer)
+
+### D. Building Native Windows Release Bundle
+```powershell
+cd "d:\Aathil\Vdart-comp\desktop"
+npx tauri build
+```
+Build outputs under `desktop\src-tauri\target\release\`:
+- `vcamp-desktop.exe` (Standalone portable executable)
+- `bundle\nsis\VCamp_1.0.0_x64-setup.exe` -> packaged as `release\VCamp-Setup.exe`
+- `bundle\msi\VCamp_1.0.0_x64_en-US.msi` -> packaged as `release\VCamp-Setup.msi`
 
 ---
 
 ## 4. Desktop Interactions
 
-- **Drag Robot:** Click and drag the move bar at the top of the companion to position VCamp anywhere on your Windows desktop.
-- **Open Chat:** Click directly on the 3D robot or click the speech bubble icon to toggle the conversation panel.
-- **Voice Chat (Push-to-Talk):** Click the microphone button in the chat popup. Speak in Tamil, English, or Tanglish. Click again when finished to transcribe and send.
-- **Open Dashboard:** Click the dashboard icon in the chat header or the system tray menu to access the comprehensive Control Center.
-- **Minimize to Tray:** Click the minimize icon to hide the 3D companion while keeping the application alive in the Windows notification area / system tray.
-- **Restore from Tray:** Click the VCamp tray icon or select "Show Companion" to bring the robot back immediately.
-- **Exit Application:** Select "Exit VCamp" from the system tray menu to completely terminate all background processes.
+- **Drag Companion:** Drag the companion move handle to position VCamp anywhere on your Windows desktop.
+- **Open Chat:** Click the 3D character or chat icon to open the conversation drawer.
+- **Voice Chat (Push-to-Talk):** Click the microphone button in chat to speak in English, Tamil, or Tanglish.
+- **Open Workspace Dashboard:** Click the Dashboard icon or tray menu item to open Character Studio, Wellbeing, Question Engine, Reminders, HR Analytics (Admin), and Settings.
+- **Minimize to Tray / Exit:** Minimize sends VCamp to the Windows system tray; Exit terminates the process cleanly.

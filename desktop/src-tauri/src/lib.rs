@@ -1,12 +1,82 @@
 pub mod movement;
 
+use std::fs;
+use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager,
 };
+use tauri_plugin_autostart::ManagerExt;
 
 use movement::*;
+
+fn resolve_vcamp_data_dir(app: &AppHandle) -> PathBuf {
+    if let Ok(dir) = app.path().app_data_dir() {
+        let store = dir.join("data");
+        let _ = fs::create_dir_all(&store);
+        return store;
+    }
+    let fallback = std::env::temp_dir().join("vcamp_data");
+    let _ = fs::create_dir_all(&fallback);
+    fallback
+}
+
+fn sanitize_storage_key(key: &str) -> String {
+    key.chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .collect()
+}
+
+#[tauri::command]
+fn get_app_data_dir(app: AppHandle) -> Result<String, String> {
+    Ok(resolve_vcamp_data_dir(&app).to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn save_app_data(app: AppHandle, key: String, payload: String) -> Result<(), String> {
+    let dir = resolve_vcamp_data_dir(&app);
+    let safe_key = sanitize_storage_key(&key);
+    let path = dir.join(format!("{}.json", safe_key));
+    fs::write(path, payload).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn load_app_data(app: AppHandle, key: String) -> Result<Option<String>, String> {
+    let dir = resolve_vcamp_data_dir(&app);
+    let safe_key = sanitize_storage_key(&key);
+    let path = dir.join(format!("{}.json", safe_key));
+    if !path.exists() {
+        return Ok(None);
+    }
+    fs::read_to_string(path).map(Some).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_app_data(app: AppHandle, key: String) -> Result<(), String> {
+    let dir = resolve_vcamp_data_dir(&app);
+    let safe_key = sanitize_storage_key(&key);
+    let path = dir.join(format!("{}.json", safe_key));
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_autostart_enabled(app: AppHandle) -> Result<bool, String> {
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_autostart_enabled(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    if enabled {
+        app.autolaunch().enable().map_err(|e| e.to_string())?;
+    } else {
+        app.autolaunch().disable().map_err(|e| e.to_string())?;
+    }
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 fn toggle_companion(app: AppHandle) -> Result<(), String> {
@@ -57,7 +127,7 @@ fn start_window_drag(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn update_window_layout(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
+fn update_window_layout(app: AppHandle, width: f64, height: f64, center: Option<bool>) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         if let Ok(Some(monitor)) = window.current_monitor() {
             let scale_factor = monitor.scale_factor();
@@ -79,8 +149,8 @@ fn update_window_layout(app: AppHandle, width: f64, height: f64) -> Result<(), S
 
             let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
 
-            if width > 700.0 && height > 550.0 {
-                // Dashboard: center on screen
+            if center.unwrap_or(false) || (width > 700.0 && height > 550.0) {
+                // Modal / Auth / Dashboard: center cleanly on screen
                 let target_x = logical_screen_x + (logical_screen_w - width).max(0.0) / 2.0;
                 let target_y = logical_screen_y + (logical_screen_h - height).max(0.0) / 2.0;
                 let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition {
@@ -188,6 +258,12 @@ pub fn run() {
             get_window_position,
             set_window_position,
             get_cursor_position,
+            get_app_data_dir,
+            save_app_data,
+            load_app_data,
+            delete_app_data,
+            get_autostart_enabled,
+            set_autostart_enabled,
             // Native Movement Engine commands
             start_native_walk,
             start_native_run,
@@ -261,7 +337,7 @@ pub fn run() {
                     .icon(icon)
                     .menu(&menu)
                     .show_menu_on_left_click(false)
-                    .tooltip("VCamp - AI Desktop Companion")
+                    .tooltip("VDart Companion (VCamp)")
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "show" => {
                             if let Some(window) = app.get_webview_window("main") {

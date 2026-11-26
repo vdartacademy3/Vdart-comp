@@ -200,12 +200,12 @@ class QuestionEngineService {
    * Triggers a question check-in directly beside the desktop robot.
    */
   public triggerQuestion(force: boolean = false): boolean {
-    // Prevent overlapping question popups if one is already open or thinking
-    if (this.currentQuestion !== null || this.isThinking) {
-      return false;
-    }
-
     if (!force) {
+      // Prevent overlapping question popups if one is already open or thinking
+      if (this.currentQuestion !== null || this.isThinking) {
+        return false;
+      }
+
       if (!this.config.isAutoEnabled) return false;
       if (this.config.isPaused) return false;
       if (this.isQuietHours()) return false;

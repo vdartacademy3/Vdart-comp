@@ -155,44 +155,40 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
   return (
     <div 
       onClick={(e) => e.stopPropagation()}
-      className="relative flex flex-col z-40 bg-slate-950/95 border-2 border-cyan-400/80 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-left-3 duration-300 select-none text-slate-100 max-w-sm w-80 sm:w-88"
-      style={{
-        boxShadow: '0 0 25px rgba(0, 242, 254, 0.25), 0 15px 35px rgba(0, 0, 0, 0.7)',
-      }}
+      className="relative flex flex-col z-40 vcamp-card border-2 border-vcamp-primary rounded-2xl p-4 select-none text-vcamp-text max-w-sm w-80 sm:w-88"
     >
-      {/* Pointed Speech Bubble Tail pointing left toward the 3D robot */}
       <div 
-        className="absolute -left-2.5 bottom-8 w-4 h-4 bg-slate-950 border-b-2 border-l-2 border-cyan-400/80 transform rotate-45"
+        className="absolute -left-2.5 bottom-8 w-4 h-4 bg-white border-b-2 border-l-2 border-vcamp-primary transform rotate-45"
       />
 
       {/* Header Bar */}
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-cyan-500/20">
+      <div className="flex items-center justify-between pb-2 mb-2 border-b border-vcamp-border">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-cyan-950 border border-cyan-500/50 flex items-center justify-center text-cyan-400">
-            <Bell className="w-3.5 h-3.5 animate-bounce" />
+          <div className="w-6 h-6 rounded-lg bg-vcamp-secondary flex items-center justify-center text-vcamp-primary">
+            <Bell className="w-3.5 h-3.5" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+          <span className="text-xs font-bold uppercase tracking-wider text-vcamp-text">
             Due Reminder
           </span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
             reminder.priority === 'high' 
-              ? 'bg-rose-950/90 text-rose-300 border border-rose-500/50' 
+              ? 'bg-red-50 text-vcamp-error border border-red-200' 
               : reminder.priority === 'medium'
-              ? 'bg-cyan-950/90 text-cyan-300 border border-cyan-500/40'
-              : 'bg-slate-900 text-slate-400'
+              ? 'bg-vcamp-secondary text-vcamp-primary border border-blue-200'
+              : 'bg-slate-100 text-vcamp-muted'
           }`}>
             {reminder.priority}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-            <Clock className="w-3 h-3 text-cyan-400" />
+          <span className="text-[11px] text-vcamp-muted font-mono flex items-center gap-1">
+            <Clock className="w-3 h-3 text-vcamp-primary" />
             {formattedDueTime}
           </span>
           <button
             onClick={handleDismiss}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors ml-1"
+            className="p-1 rounded-lg text-vcamp-muted hover:text-vcamp-text hover:bg-slate-100 transition-colors ml-1"
             title="Dismiss Reminder"
           >
             <X className="w-3.5 h-3.5" />
@@ -202,19 +198,19 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
 
       {/* Reminder Title */}
       <div className="mb-2">
-        <h3 className="text-sm font-bold text-white leading-snug line-clamp-2">
+        <h3 className="text-sm font-bold text-vcamp-text leading-snug line-clamp-2">
           {reminder.title}
         </h3>
         {reminder.description && (
-          <p className="text-[11px] text-slate-300 mt-1 line-clamp-2">
+          <p className="text-[11px] text-vcamp-muted mt-1 line-clamp-2">
             {reminder.description}
           </p>
         )}
       </div>
 
-      {/* Conversational Spoken Announcement from VCamp */}
-      <div className="bg-slate-900/90 border border-cyan-500/30 rounded-xl p-2.5 mb-3 text-[11px] text-cyan-200/90 italic flex items-start gap-2">
-        <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+      {/* Conversational Spoken Announcement */}
+      <div className="bg-vcamp-secondary border border-blue-200 rounded-xl p-2.5 mb-3 text-[11px] text-vcamp-text flex items-start gap-2">
+        <Sparkles className="w-3.5 h-3.5 text-vcamp-primary shrink-0 mt-0.5" />
         <div className="flex-1">
           <p className="leading-relaxed">
             "{reminder.conversationalPrompt || `Hey! It's time for ${reminder.title}. Shall we mark it done or snooze?`}"
@@ -224,35 +220,33 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
           onClick={() => {
             speechService.speak(reminder.conversationalPrompt || reminder.title);
           }}
-          className="text-slate-400 hover:text-cyan-300 p-1"
+          className="text-vcamp-muted hover:text-vcamp-primary p-1"
           title="Re-play voice announcement"
         >
           <Volume2 className="w-3 h-3" />
         </button>
       </div>
 
-      {/* Voice / Text Feedback Notification */}
       {voiceFeedback && (
-        <div className="mb-2 px-2.5 py-1 rounded-lg bg-cyan-950/90 border border-cyan-500/40 text-[10px] text-cyan-300 font-medium flex items-center justify-between">
+        <div className="mb-2 px-2.5 py-1 rounded-lg bg-vcamp-secondary border border-blue-200 text-[10px] text-vcamp-primary font-medium flex items-center justify-between">
           <span>{voiceFeedback}</span>
-          <button onClick={() => setVoiceFeedback(null)} className="text-slate-400 hover:text-white">
+          <button onClick={() => setVoiceFeedback(null)} className="text-vcamp-muted hover:text-vcamp-text">
             <X className="w-2.5 h-2.5" />
           </button>
         </div>
       )}
 
-      {/* Reschedule Inline Form (if open) */}
       {isRescheduling ? (
-        <form onSubmit={handleRescheduleSubmit} className="mb-3 space-y-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+        <form onSubmit={handleRescheduleSubmit} className="mb-3 space-y-2 bg-slate-50 p-2.5 rounded-xl border border-vcamp-border">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="font-semibold text-cyan-300 flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
+            <span className="font-semibold text-vcamp-text flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-vcamp-primary" />
               Pick New Time:
             </span>
             <button 
               type="button" 
               onClick={() => setIsRescheduling(false)}
-              className="text-slate-400 hover:text-white text-[10px]"
+              className="text-vcamp-muted hover:text-vcamp-text text-[10px]"
             >
               Cancel
             </button>
@@ -262,42 +256,38 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
             value={rescheduleTime}
             onChange={(e) => setRescheduleTime(e.target.value)}
             required
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white"
+            className="w-full bg-white border border-vcamp-border rounded-lg px-2 py-1 text-xs text-vcamp-text"
           />
           <button
             type="submit"
-            className="w-full py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold"
+            className="w-full py-1.5 rounded-lg bg-vcamp-primary hover:bg-vcamp-primaryHover text-white text-xs font-semibold"
           >
             Confirm Reschedule
           </button>
         </form>
       ) : (
-        /* Action Buttons */
         <div className="space-y-2 mb-2">
           <div className="grid grid-cols-2 gap-2">
-            {/* 1. Mark Done Button */}
             <button
               onClick={handleDone}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/45 border border-emerald-500/50 text-emerald-200 font-bold text-xs shadow-lg transition-all active:scale-95"
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-vcamp-success font-bold text-xs transition-all"
             >
-              <Check className="w-4 h-4 text-emerald-400 stroke-[2.5]" />
+              <Check className="w-4 h-4 stroke-[2.5]" />
               <span>Done</span>
             </button>
 
-            {/* 2. Snooze Dropdown Button */}
             <div className="relative">
               <button
                 onClick={() => setShowSnoozeOptions(!showSnoozeOptions)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-cyan-950/80 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-200 font-bold text-xs transition-all active:scale-95"
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-vcamp-secondary hover:bg-blue-100 border border-blue-200 text-vcamp-primary font-bold text-xs transition-all"
               >
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <Clock className="w-3.5 h-3.5" />
                 <span>Snooze</span>
-                <ChevronDown className="w-3 h-3 text-cyan-400 ml-0.5" />
+                <ChevronDown className="w-3 h-3 ml-0.5" />
               </button>
 
-              {/* Snooze Submenu */}
               {showSnoozeOptions && (
-                <div className="absolute right-0 bottom-full mb-1 w-full bg-slate-900 border border-cyan-500/40 rounded-xl shadow-2xl p-1 z-50 space-y-1">
+                <div className="absolute right-0 bottom-full mb-1 w-full vcamp-card rounded-xl p-1 z-50 space-y-1">
                   {[
                     { label: '5 minutes', mins: 5 },
                     { label: '15 minutes', mins: 15 },
@@ -307,7 +297,7 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
                     <button
                       key={s.mins}
                       onClick={() => handleSnooze(s.mins)}
-                      className="w-full text-left px-2.5 py-1 rounded-lg hover:bg-cyan-950 text-cyan-300 text-xs font-medium"
+                      className="w-full text-left px-2.5 py-1 rounded-lg hover:bg-vcamp-secondary text-vcamp-text text-xs font-medium"
                     >
                       {s.label}
                     </button>
@@ -317,18 +307,17 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
             </div>
           </div>
 
-          {/* Quick Reschedule & Dismiss row */}
           <div className="flex items-center justify-between text-[11px] pt-1 px-1">
             <button
               onClick={() => setIsRescheduling(true)}
-              className="text-slate-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition-colors"
+              className="text-vcamp-muted hover:text-vcamp-primary font-medium flex items-center gap-1"
             >
               <Calendar className="w-3 h-3" />
               <span>Reschedule...</span>
             </button>
             <button
               onClick={handleDismiss}
-              className="text-slate-400 hover:text-rose-300 font-medium transition-colors"
+              className="text-vcamp-muted hover:text-vcamp-error font-medium"
             >
               Dismiss
             </button>
@@ -336,25 +325,24 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
         </div>
       )}
 
-      {/* Voice & Quick Text Input Bar */}
-      <form onSubmit={handleTextInputSubmit} className="pt-2 border-t border-cyan-500/20 flex items-center gap-1.5">
+      <form onSubmit={handleTextInputSubmit} className="pt-2 border-t border-vcamp-border flex items-center gap-1.5">
         <button
           type="button"
           onClick={handleToggleVoice}
           disabled={isTranscribing}
           className={`p-1.5 rounded-xl border flex items-center justify-center transition-all ${
             isRecording
-              ? 'bg-rose-950 border-rose-500 text-rose-300 animate-pulse'
-              : 'bg-slate-900 border-cyan-500/40 text-cyan-300 hover:bg-cyan-950'
+              ? 'bg-red-50 border-vcamp-error text-vcamp-error animate-pulse'
+              : 'bg-white border-vcamp-border text-vcamp-primary hover:bg-vcamp-secondary'
           }`}
-          title={isRecording ? "Stop voice listening" : "Speak voice command (e.g. 'Done' or 'Snooze 10 mins')"}
+          title={isRecording ? "Stop voice listening" : "Speak voice command"}
         >
           {isTranscribing ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : isRecording ? (
-            <Square className="w-3.5 h-3.5 text-rose-400" />
+            <Square className="w-3.5 h-3.5" />
           ) : (
-            <Mic className="w-3.5 h-3.5 text-cyan-400" />
+            <Mic className="w-3.5 h-3.5" />
           )}
         </button>
 
@@ -363,12 +351,12 @@ export const ReminderBubble: React.FC<ReminderBubbleProps> = ({ reminder, onClos
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder={isRecording ? `Listening (${recordingSeconds}s)...` : "Say or type: 'done', 'snooze 15m'..."}
-          className="flex-1 bg-slate-900/90 border border-slate-700 rounded-xl px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+          className="flex-1 bg-slate-50 border border-vcamp-border rounded-xl px-2.5 py-1 text-xs text-vcamp-text placeholder-vcamp-muted focus:outline-none focus:border-vcamp-primary focus:bg-white"
         />
 
         <button
           type="submit"
-          className="p-1.5 rounded-xl bg-cyan-600/40 hover:bg-cyan-600 text-cyan-200 border border-cyan-500/50 transition-colors"
+          className="p-1.5 rounded-xl bg-vcamp-primary hover:bg-vcamp-primaryHover text-white transition-colors"
           title="Send command"
         >
           <ArrowRight className="w-3.5 h-3.5" />

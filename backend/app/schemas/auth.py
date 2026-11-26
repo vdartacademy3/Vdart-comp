@@ -1,22 +1,29 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from ..models.user import EmployeeRole
 
+
 class RegisterRequest(BaseModel):
     email: EmailStr
-    username: str
-    full_name: str
-    password: str
-    role: Optional[EmployeeRole] = EmployeeRole.EMPLOYEE
+    username: str = Field(min_length=2, max_length=100)
+    full_name: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
     department: Optional[str] = "Engineering"
 
+
+class AdminCreateEmployeeRequest(RegisterRequest):
+    role: Optional[EmployeeRole] = EmployeeRole.EMPLOYEE
+
+
 class LoginRequest(BaseModel):
-    login: str  # Email or username
+    login: str
     password: str
+
 
 class PasswordResetRequest(BaseModel):
     current_password: str
-    new_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
 
 class TokenResponse(BaseModel):
     access_token: str

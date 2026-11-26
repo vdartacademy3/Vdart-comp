@@ -4,3 +4,8 @@ dist/
 build/
 .env
 .env.local
+__pycache__/
+*.pyc
+backend/.vcamp_jwt_secret
+backend/logs/
+backend/backups/

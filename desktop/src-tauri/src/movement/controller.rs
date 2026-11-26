@@ -361,7 +361,7 @@ pub fn spawn_follow_cursor(app: AppHandle, standoff_px: f64, speed_px: f64) {
                     let _ = window.emit("vcamp:movement-direction", dir_x);
 
                     let move_dist = (speed_px * dt).min(dist - standoff_px);
-                    let angle = dy.atan2(dx);
+                    let angle = dx.atan2(dy);
 
                     let next_x = curr_x + angle.cos() * move_dist;
                     let next_y = curr_y + angle.sin() * move_dist;

@@ -2,14 +2,27 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, AlertCircle, Loader2 } from 'lucide-react';
 import { useConversationStore } from '../stores/conversationStore';
 import { useCompanionStore } from '../stores/companionStore';
-import { sendGroqChatMessage, detectLanguage } from '../services/groqService';
-import { analyzeSentimentLocal, analyzeSentimentWithAI } from '../services/sentimentService';
+import { detectLanguage } from '../services/groqService';
+import {
+  generateCompanionReply,
+  getSavedAIBaseUrl,
+  getSavedAIProvider,
+} from '../services/aiProviderService';
+import { analyzeSentimentLocal } from '../services/sentimentService';
+import {
+  applySentimentAdaptation,
+  evaluatePatternQuestionTrigger,
+  markPatternQuestionShown,
+} from '../services/sentimentAdaptation';
 import { AudioRecordingService, transcribeAudioWithGroq } from '../services/transcriptionService';
 import { speechService } from '../services/speechService';
 import { reminderService } from '../services/reminderService';
 import { moodTimelineService } from '../services/moodTimelineService';
-import { questionBankService } from '../services/questionBankService';
+import { userProfileService } from '../services/userProfileService';
+import { questionEngineService } from '../services/questionEngineService';
 import { apiClient } from '../services/apiClient';
+import { animationController } from '../services/animationController';
+import { detectChatAnimationIntent } from '../characters/animationMapping';
 
 const recorder = new AudioRecordingService();
 
@@ -19,9 +32,8 @@ export const MessageInput: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { addMessage, updateMessage, messages, setIsLoading, setError, isLoading } = useConversationStore();
+  const { addMessage, messages, setIsLoading, setError, isLoading } = useConversationStore();
   const {
-    state,
     setState,
     setSentiment,
     isRecording,
@@ -45,22 +57,28 @@ export const MessageInput: React.FC = () => {
     const textToSend = (customText ?? input).trim();
     if (!textToSend || isLoading) return;
 
-    // Reset input
     setInput('');
     setStatusMessage(null);
 
-    // Stop speaking if currently playing
     if (isSpeaking) {
       speechService.stop();
       setIsSpeaking(false);
     }
 
-    // 1. Analyze Sentiment instantly & record in Mood Timeline
-    const localSentiment = analyzeSentimentLocal(textToSend);
-    setSentiment(localSentiment.sentiment, localSentiment.confidence);
-    moodTimelineService.recordMood(localSentiment.sentiment, localSentiment.confidence, textToSend);
+    const activeProfile = userProfileService.getActiveProfile();
+    const consentSentiment = activeProfile.enableMoodTracking !== false;
 
-    // Natural Language Smart Reminder detection
+    const localSentiment = analyzeSentimentLocal(textToSend);
+    if (consentSentiment) {
+      setSentiment(localSentiment.sentiment, localSentiment.confidence);
+      moodTimelineService.recordMood(
+        localSentiment.sentiment,
+        localSentiment.confidence,
+        textToSend
+      );
+      applySentimentAdaptation(textToSend, localSentiment.sentiment);
+    }
+
     const parsedReminder = reminderService.parseNaturalLanguage(textToSend);
     if (parsedReminder) {
       reminderService.addReminder({
@@ -68,39 +86,27 @@ export const MessageInput: React.FC = () => {
         dueTime: parsedReminder.dueTime,
         priority: parsedReminder.priority,
       });
-      setStatusMessage(`⏰ Reminder set: "${parsedReminder.title}" (${parsedReminder.dueTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`);
+      setStatusMessage(
+        `Reminder scheduled: "${parsedReminder.title}" at ${parsedReminder.dueTime.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`
+      );
     }
 
-    // Map sentiment to companion expression
-    if (localSentiment.sentiment === 'happy' || localSentiment.sentiment === 'excited') {
-      setState('happy');
-    } else if (localSentiment.sentiment === 'sad') {
-      setState('empathetic');
-    } else if (localSentiment.sentiment === 'confused') {
-      setState('confused');
-    }
-
-    // 2. Add user message to conversation store
     const userMsg = addMessage({
       role: 'user',
       content: textToSend,
       language: detectLanguage(textToSend),
-      sentiment: localSentiment.sentiment,
-      sentimentConfidence: localSentiment.confidence,
+      sentiment: consentSentiment ? localSentiment.sentiment : undefined,
+      sentimentConfidence: consentSentiment ? localSentiment.confidence : undefined,
     });
 
-    // Background sentiment refinement with AI if API key is present
-    if (groqApiKey) {
-      analyzeSentimentWithAI(textToSend, groqApiKey).then((aiSentiment) => {
-        updateMessage(userMsg.id, {
-          sentiment: aiSentiment.sentiment,
-          sentimentConfidence: aiSentiment.confidence,
-        });
-        setSentiment(aiSentiment.sentiment, aiSentiment.confidence);
-      }).catch(() => {});
+    const chatIntent = detectChatAnimationIntent(textToSend);
+    if (chatIntent) {
+      animationController.trigger(chatIntent, { source: 'intent' });
     }
 
-    // 3. Trigger thinking state & Groq chat completion
     setIsLoading(true);
     setState('thinking');
 
@@ -108,74 +114,70 @@ export const MessageInput: React.FC = () => {
       let replyContent = '';
       let replyLanguage: 'ta' | 'en' | 'tanglish' = 'en';
 
-      // Prefer Central Secure Backend if employee is logged in
-      if (apiClient.getToken()) {
+      // Use enterprise backend when authenticated against backend server
+      if (!apiClient.isLocalSession()) {
         try {
           const chatRes = await apiClient.post('/conversations/chat', {
             message: textToSend,
+            ai_provider: getSavedAIProvider(),
+            ai_model: groqModel,
+            api_key: groqApiKey || undefined,
           });
-          replyContent = chatRes.reply;
-          if (chatRes.detected_language === 'ta' || chatRes.detected_language === 'tanglish') {
-            replyLanguage = chatRes.detected_language;
-          } else {
-            replyLanguage = 'en';
-          }
+          replyContent = chatRes.companion_message?.text || '';
+          const lang = chatRes.companion_message?.language;
+          replyLanguage = lang === 'ta' || lang === 'tanglish' ? lang : 'en';
 
-          if (chatRes.sentiment) {
-            const sem = chatRes.sentiment.primary_emotion as any;
-            const conf = chatRes.sentiment.confidence || 0.85;
-            setSentiment(sem, conf);
-            updateMessage(userMsg.id, {
-              sentiment: sem,
-              sentimentConfidence: conf,
-            });
-
-            // Map backend 15-class sentiment to companion character animation
-            if (['happy', 'excited', 'motivated'].includes(sem)) {
-              setState('happy');
-            } else if (['sad', 'disappointed', 'tired', 'anxious', 'stressed', 'frustrated'].includes(sem)) {
-              setState('empathetic');
-            } else if (['confused', 'curious'].includes(sem)) {
-              setState('confused');
-            }
-          }
-
-          if (chatRes.detected_reminders && chatRes.detected_reminders.length > 0) {
-            setStatusMessage(`⏰ Synced ${chatRes.detected_reminders.length} reminder(s) to your personal calendar`);
+          if (consentSentiment && chatRes.detected_emotion) {
+            setSentiment(chatRes.detected_emotion, chatRes.confidence || 0.85);
+            applySentimentAdaptation(textToSend, chatRes.detected_emotion);
           }
         } catch (backendErr) {
-          console.warn('Backend chat fallback to direct Groq:', backendErr);
+          console.warn('Backend chat fallback to modular local AI provider:', backendErr);
         }
       }
 
-      // If backend was not used or failed, fallback to direct client-side Groq call
       if (!replyContent) {
-        const response = await sendGroqChatMessage({
+        const provider = getSavedAIProvider();
+        const baseUrl = getSavedAIBaseUrl();
+        const response = await generateCompanionReply({
+          provider,
+          baseUrl,
           apiKey: groqApiKey,
           model: groqModel,
           systemPrompt,
           messages: [...messages, userMsg],
+          detectedSentiment: localSentiment.sentiment,
         });
         replyContent = response.content;
         replyLanguage = response.language;
       }
 
-      // 4. Add assistant reply to conversation store
-      const assistantMsg = addMessage({
+      addMessage({
         role: 'assistant',
         content: replyContent,
         language: replyLanguage,
         sentiment: 'neutral',
       });
 
-      // 5. Speech synthesis if auto-speak is enabled
+      // Check intelligent pattern-based question trigger (non-intrusive cooldown)
+      const qConfig = questionEngineService.getConfig();
+      const patternPrompt = evaluatePatternQuestionTrigger(
+        activeProfile.enableQuestions && !qConfig.isPaused,
+        false
+      );
+      if (patternPrompt) {
+        markPatternQuestionShown();
+        setStatusMessage(`Check-in: ${patternPrompt.text}`);
+      }
+
+      // TALK starts strictly when audio playback starts (onStart)
       if (autoSpeak) {
-        setIsSpeaking(true);
-        setState('speaking');
+        const isExpressive = replyContent.length > 110 || /[!?]/.test(replyContent);
         speechService.speak(replyContent, {
           rate: speechRate,
           pitch: speechPitch,
           voiceName: speechVoice,
+          expressive: isExpressive,
           onStart: () => {
             setIsSpeaking(true);
             setState('speaking');
@@ -193,16 +195,16 @@ export const MessageInput: React.FC = () => {
         setState('idle');
       }
     } catch (err: any) {
-      console.error('Chat error:', err);
-      const errMsg = err.message || 'Failed to communicate with Groq AI.';
+      const errMsg = err.message || 'Unable to generate companion response.';
       setError(errMsg);
       setState('confused');
       addMessage({
         role: 'assistant',
-        content: `⚠️ Error: ${errMsg}`,
+        content: `Error: ${errMsg}`,
         sentiment: 'confused',
       });
     } finally {
+      animationController.onAIProcessingEnd();
       setIsLoading(false);
     }
   };
@@ -214,14 +216,12 @@ export const MessageInput: React.FC = () => {
     }
   };
 
-  // Voice recording workflow with Groq Whisper
   const handleToggleVoice = async () => {
     if (isRecording) {
-      // STOP recording and transcribe
       try {
         setIsRecording(false);
         setTranscribing(true);
-        setStatusMessage('Transcribing audio with Whisper...');
+        setStatusMessage('Transcribing voice input...');
         setState('thinking');
 
         const audioBlob = await recorder.stopRecording();
@@ -231,33 +231,30 @@ export const MessageInput: React.FC = () => {
         setStatusMessage(null);
 
         if (transcription.text) {
-          // Immediately send transcribed voice message
           await handleSend(transcription.text);
         } else {
           setStatusMessage('No speech detected. Please try again.');
+          animationController.onAIProcessingEnd();
           setState('idle');
         }
       } catch (err: any) {
         setTranscribing(false);
         setIsRecording(false);
-        setStatusMessage(`Mic error: ${err.message}`);
+        animationController.onAIProcessingEnd();
+        setStatusMessage(`Voice error: ${err.message}`);
         setState('confused');
       }
     } else {
-      // START recording
       try {
         if (!groqApiKey) {
-          setStatusMessage('Please enter Groq API Key first to enable voice transcription.');
+          setStatusMessage('Configure a Groq API key in Settings to use Whisper voice transcription.');
           return;
         }
-
-        // Stop speaking if currently active
         if (isSpeaking) {
           speechService.stop();
           setIsSpeaking(false);
         }
-
-        setStatusMessage('Listening... பேசுங்கள்... (Click mic to finish)');
+        setStatusMessage('Listening... Click microphone again to send.');
         setIsRecording(true);
         setState('listening');
         await recorder.startRecording();
@@ -270,63 +267,62 @@ export const MessageInput: React.FC = () => {
   };
 
   return (
-    <div className="p-2 border-t border-cyan-500/20 bg-slate-900/90">
-      {/* Status banner for recording / transcribing / errors */}
+    <div className="p-2.5 border-t border-vcamp-border bg-white">
       {(statusMessage || isRecording || transcribing) && (
         <div
-          className={`flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded text-[11px] ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 mb-2 rounded-lg text-[11px] border ${
             isRecording
-              ? 'bg-rose-950/70 border border-rose-500/50 text-rose-300 recording-pulse'
+              ? 'bg-red-50 border-red-200 text-vcamp-error recording-pulse'
               : transcribing
-              ? 'bg-cyan-950/70 border border-cyan-500/50 text-cyan-300'
-              : 'bg-amber-950/70 border border-amber-500/50 text-amber-300'
+              ? 'bg-vcamp-secondary border-blue-200 text-vcamp-primary'
+              : 'bg-amber-50 border-amber-200 text-vcamp-warning'
           }`}
         >
           {isRecording ? (
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block mr-1" />
+            <span className="w-2 h-2 rounded-full bg-vcamp-error animate-ping inline-block mr-1" />
           ) : transcribing ? (
-            <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+            <Loader2 className="w-3 h-3 animate-spin text-vcamp-primary shrink-0" />
           ) : (
-            <AlertCircle className="w-3 h-3" />
+            <AlertCircle className="w-3 h-3 shrink-0" />
           )}
-          <span className="truncate">{statusMessage || (isRecording ? 'Listening... பேசுங்கள்...' : '')}</span>
+          <span className="truncate">{statusMessage || 'Listening...'}</span>
         </div>
       )}
 
-      {/* Input controls row */}
-      <div className="flex items-end gap-1.5 bg-slate-950/80 rounded-xl border border-cyan-500/30 p-1.5 focus-within:border-cyan-400 transition-colors">
+      <div className="flex items-end gap-1.5 bg-slate-50 rounded-xl border border-vcamp-border p-1.5 focus-within:border-vcamp-primary focus-within:bg-white transition-colors">
         <textarea
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type in Tamil, English, or Tanglish... (e.g. வணக்கம் / hi)"
+          placeholder="Message VCamp (English, Tamil, or Tanglish)..."
           rows={1}
-          className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 text-xs resize-none outline-none max-h-20 py-1 px-1.5"
+          data-testid="chat-input"
+          className="flex-1 bg-transparent text-vcamp-text placeholder-vcamp-muted text-xs resize-none outline-none max-h-20 py-1.5 px-2"
           disabled={isLoading || isRecording || transcribing}
         />
 
-        {/* Microphone Button */}
         <button
+          id="vcamp-mic-button"
           type="button"
           onClick={handleToggleVoice}
           disabled={isLoading || transcribing}
-          className={`p-2 rounded-lg transition-all ${
+          className={`p-2 rounded-lg transition-colors ${
             isRecording
-              ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/40 animate-pulse'
-              : 'hover:bg-cyan-950 text-cyan-400 hover:text-cyan-300 border border-transparent hover:border-cyan-500/40'
+              ? 'bg-vcamp-error text-white'
+              : 'hover:bg-vcamp-secondary text-vcamp-primary'
           }`}
-          title={isRecording ? 'Click to finish speaking' : 'Speak with VCamp (Push-to-talk)'}
+          title={isRecording ? 'Finish recording' : 'Voice input'}
         >
           {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
         </button>
 
-        {/* Send Button */}
         <button
           type="button"
+          data-testid="chat-send-btn"
           onClick={() => handleSend()}
           disabled={!input.trim() || isLoading || isRecording}
-          className="p-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600 text-white rounded-lg transition-colors shadow-sm"
+          className="p-2 bg-vcamp-primary hover:bg-vcamp-primaryHover disabled:opacity-40 text-white rounded-lg transition-colors"
           title="Send message"
         >
           <Send className="w-4 h-4" />

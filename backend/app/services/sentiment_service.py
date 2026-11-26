@@ -120,10 +120,38 @@ NEGATIONS = {
     "tanglish": ["illa", "illai", "kidayathu", "mudiyathu", "matten", "not", "no"]
 }
 
+# Context Categories for Adaptive Companion & Pattern Question Engine
+WORKLOAD_KEYWORDS = [
+    "deadline", "deadlines", "overtime", "workload", "too much work", "backlog",
+    "overwhelmed", "hectic", "buried", "pressure", "deliverable", "crunch",
+    "பளு", "சுமை", "வேலை அதிகம்", "pressure", "vela adhigam"
+]
+
+
 class AdvancedSentimentClassifier:
     def __init__(self):
         self.model_version = settings.SENTIMENT_MODEL_VERSION
         self.threshold = settings.SENTIMENT_CONFIDENCE_THRESHOLD
+
+    def detect_context_category(self, text: str, primary_emotion: str) -> str:
+        lower = (text or "").lower()
+        if any(k in lower for k in WORKLOAD_KEYWORDS):
+            return "workload"
+        if primary_emotion in ["stressed", "tired"]:
+            return "stress"
+        if primary_emotion in ["frustrated", "angry", "disappointed"]:
+            return "frustration"
+        if primary_emotion == "anxious":
+            return "anxiety"
+        if primary_emotion == "sad":
+            return "sadness"
+        if primary_emotion == "confused":
+            return "confusion"
+        if primary_emotion in ["motivated"]:
+            return "motivation"
+        if primary_emotion in ["happy", "excited", "calm"]:
+            return "positive"
+        return "general"
 
     def detect_language(self, text: str) -> str:
         """Accurately detects whether text is Tamil Unicode, Tanglish (Latin phonetics), or English."""
@@ -239,8 +267,9 @@ class AdvancedSentimentClassifier:
         has_secondary = (secondary_conf >= 0.18 and (primary_conf - secondary_conf) < 0.22)
         final_secondary = secondary_emotion if has_secondary else None
 
-        # Determine polarity
+        # Determine polarity & context category
         polarity = POLARITY_MAP.get(primary_emotion, "neutral")
+        context_category = self.detect_context_category(text, primary_emotion)
 
         return {
             "primary_emotion": primary_emotion,
@@ -249,6 +278,7 @@ class AdvancedSentimentClassifier:
             "per_class_scores": per_class_scores,
             "detected_language": lang,
             "polarity": polarity,
+            "context_category": context_category,
             "model_version": self.model_version,
             "prediction_timestamp": datetime.utcnow(),
             "is_uncertain": is_uncertain
@@ -263,6 +293,7 @@ class AdvancedSentimentClassifier:
             "per_class_scores": uniform,
             "detected_language": lang,
             "polarity": "neutral",
+            "context_category": "general",
             "model_version": self.model_version,
             "prediction_timestamp": datetime.utcnow(),
             "is_uncertain": True

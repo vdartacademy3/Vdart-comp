@@ -8,33 +8,23 @@ export default {
     extend: {
       colors: {
         vcamp: {
-          dark: '#080d1a',
-          navy: '#0f172a',
-          surface: '#1e293b',
-          cyan: '#06b6d4',
-          glow: '#00f2fe',
-          accent: '#3b82f6',
-          border: 'rgba(6, 182, 212, 0.25)',
+          bg: '#FFFFFF',
+          surface: '#F8FAFC',
+          primary: '#1769D2',
+          primaryHover: '#1254A8',
+          secondary: '#EAF3FF',
+          text: '#172B4D',
+          muted: '#64748B',
+          border: '#E2E8F0',
+          success: '#16A34A',
+          warning: '#D97706',
+          error: '#DC2626',
         }
       },
       boxShadow: {
-        'glow-cyan': '0 0 15px rgba(6, 182, 212, 0.4), 0 0 30px rgba(0, 242, 254, 0.2)',
-        'glow-sm': '0 0 8px rgba(6, 182, 212, 0.5)',
+        'corporate': '0 4px 16px rgba(23, 43, 77, 0.08), 0 1px 3px rgba(23, 43, 77, 0.05)',
+        'card': '0 1px 3px rgba(23, 43, 77, 0.06), 0 1px 2px rgba(23, 43, 77, 0.04)',
       },
-      animation: {
-        'pulse-glow': 'pulseGlow 2.5s infinite ease-in-out',
-        'float': 'float 3s ease-in-out infinite',
-      },
-      keyframes: {
-        pulseGlow: {
-          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
-          '50%': { opacity: '0.9', transform: 'scale(1.05)' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-6px)' },
-        }
-      }
     },
   },
   plugins: [],

@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Foreig
 from sqlalchemy.orm import relationship
 from ..database import Base
 
+
 class CompanionProfile(Base):
     __tablename__ = "companion_profiles"
 
@@ -11,16 +12,36 @@ class CompanionProfile(Base):
     companion_name = Column(String(100), default="VCamp")
     personality_tone = Column(String(50), default="supportive")
     active_language = Column(String(20), default="auto")  # auto, ta, en, tanglish
-    selected_voice = Column(String(100), default="Microsoft Heera - English (India)")
+    selected_voice = Column(String(100), default="")
     speech_rate = Column(Float, default=1.0)
     speech_pitch = Column(Float, default=1.0)
     auto_speak = Column(Boolean, default=True)
     robot_size = Column(String(20), default="medium")  # small, medium, large
     system_prompt = Column(Text, nullable=True)
+
+    # Character & Studio Persistence
+    selected_character_id = Column(String(80), default="vcamp_robot")
+    character_settings_json = Column(Text, nullable=True)
+
+    # Modular AI Provider Settings (non-secret provider selection)
+    ai_provider = Column(String(40), default="groq")
+    ai_model = Column(String(120), default="llama-3.3-70b-versatile")
+
+    # Explicit Consent & Retention Controls
+    consent_sentiment = Column(Boolean, default=True)
+    consent_memory = Column(Boolean, default=True)
+    consent_questions = Column(Boolean, default=True)
+    retention_days = Column(Integer, default=90)
+    quiet_hours_enabled = Column(Boolean, default=True)
+    quiet_hours_start = Column(String(10), default="22:00")
+    quiet_hours_end = Column(String(10), default="08:00")
+    consent_updated_at = Column(DateTime, default=datetime.utcnow)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     employee = relationship("Employee", back_populates="companion_profile")
+
 
 class CompanionModelAsset(Base):
     __tablename__ = "companion_models"

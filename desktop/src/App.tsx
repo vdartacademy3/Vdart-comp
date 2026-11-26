@@ -3,7 +3,11 @@ import { CompanionOverlay } from './components/CompanionOverlay';
 import { useCompanionStore } from './stores/companionStore';
 
 export const App: React.FC = () => {
-  const { isChatOpen, setIsChatOpen, isDashboardOpen, setIsDashboardOpen } = useCompanionStore();
+  const { isChatOpen, setIsChatOpen, isDashboardOpen, setIsDashboardOpen, hydrateDesktopPersistence } = useCompanionStore();
+
+  useEffect(() => {
+    void hydrateDesktopPersistence();
+  }, [hydrateDesktopPersistence]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

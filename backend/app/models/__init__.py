@@ -1,7 +1,7 @@
 from .user import Employee, EmployeeRole, EmployeeSession, AuditLog
 from .companion import CompanionProfile, CompanionModelAsset
 from .conversation import Conversation, Message, UserMemory
-from .sentiment import SentimentPrediction, ModelEvaluationRecord
+from .sentiment import SentimentPrediction, QuestionInteraction, ModelEvaluationRecord
 from .reminder import Reminder
 
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     "Message",
     "UserMemory",
     "SentimentPrediction",
+    "QuestionInteraction",
     "ModelEvaluationRecord",
-    "Reminder"
+    "Reminder",
 ]

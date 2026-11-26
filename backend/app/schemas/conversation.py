@@ -2,9 +2,11 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
+
 class MessageCreate(BaseModel):
     text: str
     language: Optional[str] = "auto"
+
 
 class MessageResponse(BaseModel):
     id: int
@@ -20,6 +22,7 @@ class MessageResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ConversationResponse(BaseModel):
     id: int
     employee_id: int
@@ -31,10 +34,16 @@ class ConversationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[int] = None
+    session_id: Optional[str] = None
     language: Optional[str] = "auto"
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
+    api_key: Optional[str] = None
+
 
 class ChatResponse(BaseModel):
     conversation_id: int
@@ -43,11 +52,15 @@ class ChatResponse(BaseModel):
     detected_emotion: str
     confidence: float
     is_uncertain: bool
+    context_category: str = "general"
+    suggested_question: Optional[dict] = None
+
 
 class UserMemoryCreate(BaseModel):
     memory_key: str
     memory_value: str
     category: Optional[str] = "preference"
+
 
 class UserMemoryResponse(BaseModel):
     id: int

@@ -3,7 +3,13 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+  --vcamp-bg: #ffffff;
+  --vcamp-primary: #1769d2;
+  --vcamp-secondary: #eaf3ff;
+  --vcamp-text: #172b4d;
+  --vcamp-text-muted: #64748b;
+  --vcamp-border: #e2e8f0;
 }
 
 * {
@@ -14,68 +20,59 @@ body {
   margin: 0;
   padding: 0;
   background-color: transparent !important;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #172b4d;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Custom Scrollbar for Chat */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: #f8fafc;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(6, 182, 212, 0.4);
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 182, 212, 0.8);
+  background: #94a3b8;
 }
 
-.glass-panel {
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(6, 182, 212, 0.15);
+.vcamp-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(23, 43, 77, 0.08), 0 1px 3px rgba(23, 43, 77, 0.05);
 }
 
-.glass-button {
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  transition: all 0.2s ease-in-out;
-}
-
-.glass-button:hover {
-  background: rgba(6, 182, 212, 0.2);
-  border-color: rgba(6, 182, 212, 0.6);
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+.vcamp-pill {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(23, 43, 77, 0.08);
 }
 
 @keyframes pulse-ring {
   0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(23, 105, 210, 0.35);
   }
   70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(6, 182, 212, 0);
+    transform: scale(1.03);
+    box-shadow: 0 0 0 8px rgba(23, 105, 210, 0);
   }
   100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(23, 105, 210, 0);
   }
 }
 
 .recording-pulse {
-  animation: pulse-ring 1.5s infinite;
+  animation: pulse-ring 1.6s infinite;
 }

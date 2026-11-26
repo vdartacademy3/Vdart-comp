@@ -1,5 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useCompanionStore, RobotSize } from '../stores/companionStore';
+
+export interface ResponsiveLayoutOptions {
+  isAuthOpen?: boolean;
+  isMinimalSettingsOpen?: boolean;
+  isContextMenuOpen?: boolean;
+  isRemindersOpen?: boolean;
+}
 
 export interface ResponsiveDimensions {
   robotWidth: number;
@@ -12,6 +19,7 @@ export interface ResponsiveDimensions {
   reminderHeight: number;
   windowWidth: number;
   windowHeight: number;
+  shouldCenter: boolean;
   scaleFactor: number;
   robotSize: RobotSize;
 }
@@ -32,7 +40,8 @@ export function calculateResponsiveDimensions(
   isDashboardOpen: boolean = false,
   isQuestionOpen: boolean = false,
   isReminderOpen: boolean = false,
-  sizePreset: RobotSize = 'medium'
+  sizePreset: RobotSize = 'medium',
+  options: ResponsiveLayoutOptions = {}
 ): ResponsiveDimensions {
   // Size preset multiplier (Small: ~0.82, Medium: 1.0, Large: ~1.25)
   const sizeMultiplier = sizePreset === 'small' ? 0.82 : sizePreset === 'large' ? 1.25 : 1.0;
@@ -81,13 +90,26 @@ export function calculateResponsiveDimensions(
 
   let winW = idleWindowWidth;
   let winH = idleWindowHeight;
+  let shouldCenter = false;
 
   if (isDashboardOpen) {
     winW = dashboardWidth;
     winH = dashboardHeight;
+    shouldCenter = true;
+  } else if (options.isAuthOpen) {
+    winW = Math.min(480, Math.max(380, screenWidth - 40));
+    winH = Math.min(680, Math.max(520, screenHeight - 60));
+    shouldCenter = true;
+  } else if (options.isMinimalSettingsOpen) {
+    winW = Math.min(380, Math.max(340, screenWidth - 40));
+    winH = Math.min(500, Math.max(420, screenHeight - 60));
+    shouldCenter = true;
   } else if (isChatOpen) {
     winW = chatWindowWidth;
     winH = chatWindowHeight;
+  } else if (options.isRemindersOpen || options.isContextMenuOpen) {
+    winW = Math.max(idleWindowWidth, 250);
+    winH = Math.max(idleWindowHeight, 360);
   } else if (isReminderOpen) {
     winW = reminderWindowWidth;
     winH = reminderWindowHeight;
@@ -107,29 +129,45 @@ export function calculateResponsiveDimensions(
     reminderHeight,
     windowWidth: winW,
     windowHeight: winH,
+    shouldCenter,
     scaleFactor: robotHeight / 270,
     robotSize: sizePreset,
   };
 }
 
 export function useResponsiveDimensions(
-  isChatOpen: boolean, 
+  isChatOpen: boolean,
   isDashboardOpen: boolean = false,
   isQuestionOpen: boolean = false,
-  isReminderOpen: boolean = false
+  isReminderOpen: boolean = false,
+  options: ResponsiveLayoutOptions = {}
 ) {
   const { robotSize } = useCompanionStore();
+  const isAuthOpen = Boolean(options.isAuthOpen);
+  const isMinimalSettingsOpen = Boolean(options.isMinimalSettingsOpen);
+  const isContextMenuOpen = Boolean(options.isContextMenuOpen);
+  const isRemindersOpen = Boolean(options.isRemindersOpen);
 
   const [dimensions, setDimensions] = useState<ResponsiveDimensions>(() => {
     const w = typeof window !== 'undefined' ? (window.screen?.width || window.innerWidth || 1920) : 1920;
     const h = typeof window !== 'undefined' ? (window.screen?.height || window.innerHeight || 1080) : 1080;
-    return calculateResponsiveDimensions(w, h, isChatOpen, isDashboardOpen, isQuestionOpen, isReminderOpen, robotSize);
+    return calculateResponsiveDimensions(w, h, isChatOpen, isDashboardOpen, isQuestionOpen, isReminderOpen, robotSize, {
+      isAuthOpen,
+      isMinimalSettingsOpen,
+      isContextMenuOpen,
+      isRemindersOpen,
+    });
   });
 
   const updateDimensions = useCallback(() => {
     const w = typeof window !== 'undefined' ? (window.screen?.width || window.innerWidth || 1920) : 1920;
     const h = typeof window !== 'undefined' ? (window.screen?.height || window.innerHeight || 1080) : 1080;
-    const newDims = calculateResponsiveDimensions(w, h, isChatOpen, isDashboardOpen, isQuestionOpen, isReminderOpen, robotSize);
+    const newDims = calculateResponsiveDimensions(w, h, isChatOpen, isDashboardOpen, isQuestionOpen, isReminderOpen, robotSize, {
+      isAuthOpen,
+      isMinimalSettingsOpen,
+      isContextMenuOpen,
+      isRemindersOpen,
+    });
     setDimensions(newDims);
 
     // If running in Tauri, notify the native window to update its size and position smoothly
@@ -139,15 +177,28 @@ export function useResponsiveDimensions(
           invoke('update_window_layout', {
             width: newDims.windowWidth,
             height: newDims.windowHeight,
+            center: newDims.shouldCenter,
           }).catch(() => {});
         })
         .catch(() => {});
     }
-  }, [isChatOpen, isDashboardOpen, isQuestionOpen, isReminderOpen, robotSize]);
+  }, [
+    isChatOpen,
+    isDashboardOpen,
+    isQuestionOpen,
+    isReminderOpen,
+    robotSize,
+    isAuthOpen,
+    isMinimalSettingsOpen,
+    isContextMenuOpen,
+    isRemindersOpen,
+  ]);
+
+  useLayoutEffect(() => {
+    updateDimensions();
+  }, [updateDimensions]);
 
   useEffect(() => {
-    updateDimensions();
-
     const handleResize = () => {
       updateDimensions();
     };

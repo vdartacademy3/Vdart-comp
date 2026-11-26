@@ -1,116 +1,30 @@
-# VCamp v2.0.0 – Comprehensive Enterprise Verification & Test Report
-**Evaluation of Employee Authentication, Tenant Isolation, Empirical Multilingual Sentiment Intelligence, Decoupled Architecture, and Production Builds**
-*Report Date: November 23, 2026*
+# VCamp v3.0.0 – Verification & Build Report
 
----
+## 1. Automated Verification Suites Executed
+All suites below were executed directly against the final codebase (`EXIT CODES -> py=0 services=0 actions=0 screen=0 personal=0 athletic=0`):
 
-## 1. Test Environment & Platform Specifications
-- **Operating System**: Windows 10 Enterprise (Build 19045 / Windows NT 10.0 x86_64)
-- **Backend Architecture**: FastAPI / Uvicorn (Python 3.15) with SQLAlchemy ORM and SQLite/PostgreSQL
-- **Authentication**: Argon2id Cryptographic Hasher (time_cost=3, memory_cost=65536, parallelism=4, salt_len=16) + PyJWT
-- **NLP / ML Framework**: Scikit-Learn 1.6.1, NumPy 2.2.3, Groq LPU SDK
-- **Frontend Frameworks**:
-  - Desktop Companion: Tauri 2.2.0 + Rust 1.84 + React 18.3.1 + Three.js 0.172.0 + @react-three/fiber
-  - Website Dashboard: React 18.3.1 + TypeScript 5.7.3 + Tailwind CSS 3.4.17 + Vite 6.0.7
-- **Evaluated Linguistic Corpora**: English, Tamil Native Unicode (`ta`), and Romanized Tanglish (`tanglish`)
+1. **`tests/test_backend_api.py`** (`python -u`) – **PASS**:
+   - System health check (`status == "healthy"`, `version == "3.0.0"`)
+   - First-user `SUPER_ADMIN` bootstrap and post-bootstrap `/api/auth/register` enforcement of `EMPLOYEE` role (preventing privilege escalation) + RBAC `403` verification
+   - Companion profile character (`athletic_man`) and consent flag persistence
+   - Chat response contract (`companion_message.text`), multilingual sentiment classification, and `context_category` (`workload`) detection
+   - HR organization analytics k-anonymity threshold (`< 3` employees -> `suppressed_for_privacy: true`; `>= 3` -> aggregated statistics unlocked)
+   - Consent opt-out prevents persisting new sentiment records + `DELETE /api/sentiment/history` removes personal records
+   - Cross-employee tenant conversation isolation (`404`)
+   - 46-sample multilingual sentiment benchmark evaluation (`sample_count == 46`, `accuracy >= 0.85`)
+   - SQLite database backup creation and personal privacy JSON export
+2. **`tests/test_services.js`** – **PASS**: Language detection and 9 multilingual sentiment assertions (English & Tamil).
+3. **`tests/test_actions_layout.js`** – **PASS**: Procedural robot pose definitions, frustum clearances, and responsive grid layout.
+4. **`tests/test_screen_fit.js`** – **PASS**: Multi-resolution DPI/sizing calculations (`1920x1080`, `1366x768`, `1280x720`, `1024x600`) and camera frustum bounds.
+5. **`tests/test_personal_companion.js`** – **PASS**: Question bank DB (2,000 items), mood mapping, and reminder parsing checks.
+6. **`tests/test_athletic_man_integration.mjs`** – **PASS**: Verified `Athletic_man` character rig (164 bones, 34 morphs), all 13 GLB animation clips crossfaded, 4 one-shot completion callbacks, and clean mixer disposal.
 
----
-
-## 2. Test Execution & Verification Matrices
-
-### 2.1 Tenant Data Isolation & RBAC Security Suite (`test_data_isolation.py`)
-All 12 automated penetration tests verify that cross-account data leakage is architecturally prohibited and that logical tenant scoping is enforced at the database level.
-
-| Test ID | Test Description | Target Endpoint | Expected Behavior | Actual Behavior | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **SEC-01** | Backend Live Health Check | `GET /api/system/health` | HTTP 200, status "healthy", DB connected | Responded healthy, DB connected, version 2.0.0 | **PASS** |
-| **SEC-02** | Employee A Registration | `POST /api/auth/register` | HTTP 200, returns JWT token and Argon2id session | Created user, auto-initialized companion profile, returned JWT | **PASS** |
-| **SEC-03** | Employee B Registration | `POST /api/auth/register` | HTTP 200, returns distinct user ID & JWT | Created user, auto-initialized companion profile | **PASS** |
-| **SEC-04** | Distinct User Contexts | `GET /api/auth/me` | User A ID != User B ID | Distinct IDs (ID 5 vs ID 6), independent sessions | **PASS** |
-| **SEC-05** | Private Conversation Creation | `POST /api/conversations` | Conversation recorded with `employee_id == A.id` | Stored with tenant foreign key constraint | **PASS** |
-| **SEC-06** | Conversation Isolation | `GET /api/conversations/{conv_a_id}` | Employee B receives HTTP 404 (Not Found / Access Denied) | HTTP 404 returned; Employee B cannot access Employee A data | **PASS** |
-| **SEC-07** | Reminder Isolation (Creation) | `POST /api/reminders` | Reminder recorded strictly for Employee A | Stored with `employee_id == A.id` | **PASS** |
-| **SEC-08** | Reminder Isolation (Listing) | `GET /api/reminders` | Employee B listing contains zero reminders from Employee A | Verified: Employee B list is empty; zero leak | **PASS** |
-| **SEC-09** | Reminder Isolation (Deletion) | `DELETE /api/reminders/{rem_a_id}`| Employee B deletion blocked with HTTP 404 | HTTP 404 returned; Employee A reminder preserved | **PASS** |
-| **SEC-10** | Sentiment Prediction Isolation | `POST /api/conversations/chat` | Sentiment analysis saved with `employee_id == A.id` | Stored with tenant foreign key constraint | **PASS** |
-| **SEC-11** | Sentiment History Isolation | `GET /api/sentiment/analytics?view=personal` | Employee B personal analytics has `total_analyzed == 0` | Verified: Employee B personal history has 0 records | **PASS** |
-| **SEC-12** | RBAC Non-Admin Gate | `GET /api/employees` | Non-admin receives HTTP 403 Forbidden | HTTP 403 returned; employee directory protected | **PASS** |
-| **SEC-13** | Admin Aggregate Analytics | `GET /api/sentiment/analytics?view=organization` | Admin sees aggregate distributions, not private messages | Verified: differential privacy aggregate returned | **PASS** |
-| **SEC-14** | Admin Non-Surveillance Gate | `GET /api/conversations/{conv_a_id}` | Admin receives HTTP 404 when attempting direct read | HTTP 404 returned; private chat surveillance blocked | **PASS** |
-| **SEC-15** | Immutable Audit Trail | `GET /api/system/audit-logs` | Admin views security event logs | All auth & sensitive actions recorded with IP and timestamp | **PASS** |
-
----
-
-### 2.2 Empirical Multilingual Sentiment Evaluation Benchmark (`test_sentiment_evaluation.py`)
-Factual, reproducible scikit-learn evaluation across 46 annotated sentences in English, Tamil Unicode, and Tanglish code-switching. **Zero fabricated constants.**
-
-#### Summary Metrics
-| Evaluation Metric | Measured Result | Evaluation Method |
-| :--- | :--- | :--- |
-| **Total Test Samples** | **46 Samples** | 18 English (`en`), 14 Tamil Unicode (`ta`), 14 Tanglish (`tanglish`) |
-| **Overall Accuracy** | **89.13%** | $\frac{41}{46}$ correct predictions across all 15 classes |
-| **Macro F1-Score** | **91.37%** | Equal unweighted average across evaluated classes |
-| **Weighted F1-Score** | **89.90%** | Support-weighted average accounting for class distribution |
-| **Inference Latency** | **< 1.2 ms** | Preprocessed morphological lookup & calibrated scoring |
-
-#### Per-Language Accuracy
-| Linguistic Domain | Correct / Total | Accuracy (%) | Linguistic Handling Highlights |
-| :--- | :--- | :--- | :--- |
-| **Tamil Native Script (`ta`)** | **14 / 14** | **100.0%** | Perfect score on Tamil Unicode suffixes ("ரொம்ப சந்தோஷமா இருக்கு", "மிகவும் வருத்தமாக உள்ளது", "கோபமாக இருக்கிறேன்") |
-| **Tanglish Romanized (`tanglish`)** | **13 / 14** | **92.86%** | High fidelity on colloquial romanized slang ("romba tension aa irukku", "semma happy bro", "orey bore adikudhu") |
-| **English (`en`)** | **14 / 18** | **77.78%** | Precise classification across fine-grained nuances (distinguishing frustrated vs anxious vs stressed) |
-
-#### Confusion Matrix (13 Evaluated Classes)
-Classes: `angry`, `anxious`, `calm`, `confused`, `disappointed`, `excited`, `frustrated`, `happy`, `motivated`, `neutral`, `sad`, `stressed`, `tired`
-```json
-[
-  [4, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-  [0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-  [0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0],
-  [0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 5, 0, 1, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3]
-]
-```
-
----
-
-### 2.3 UI & Movement Constraints Verification (`test_no_manual_movement.py`)
-| Test ID | Constraint | Target Component | Status | Detail |
-| :--- | :--- | :--- | :--- | :--- |
-| **CON-01** | No "Return Home" Button | Desktop Companion | **PASS** | Verified absent from header, toolbar, context menu |
-| **CON-02** | No "Walk" Manual Locomotion Button | Desktop Companion | **PASS** | Verified absent; companion uses automatic idle/talking poses |
-| **CON-03** | No "Run Across" Manual Button | Desktop Companion | **PASS** | Verified absent |
-| **CON-04** | No "Jump / Hop" Manual Button | Desktop Companion | **PASS** | Verified absent |
-| **CON-05** | No "Wander" Manual Button | Desktop Companion | **PASS** | Verified absent |
-| **CON-06** | No "Movement Speed" Slider | Desktop Companion | **PASS** | Verified absent |
-| **CON-07** | No Embedded Dashboard Modal | Desktop Companion | **PASS** | Verified `DashboardModal` and 13 tabs completely removed from desktop |
-| **CON-08** | No Manual Movement Controls | Website Dashboard | **PASS** | Verified zero locomotion buttons in dashboard navigation |
-
----
-
-### 2.4 Compilation & Packaging Build Tests
-| Build Target | Command | Output Directory | Verification |
-| :--- | :--- | :--- | :--- |
-| **Desktop TypeScript** | `npx tsc --noEmit` | `desktop/` | **0 errors (Clean compilation)** |
-| **Desktop Vite Bundle** | `npm run build` | `desktop/dist/` | **Built in 22.01s (Assets generated)** |
-| **Dashboard TypeScript** | `npx tsc --noEmit` | `dashboard/` | **0 errors (Clean compilation)** |
-| **Dashboard Vite Bundle** | `npm run build` | `dashboard/dist/` | **Built in 8.79s (244 kB JS, 28 kB CSS)** |
-| **FastAPI Backend Service**| `python run.py` | `http://0.0.0.0:8000`| **Operational (Health check 200 OK)** |
-
----
-
-## 3. Final Certification
-VCamp v2.0.0 satisfies all architectural requirements:
-- Mandatory employee authentication with Argon2id cryptographic hashing.
-- Strict logical tenant isolation guaranteeing privacy without surveillance.
-- Minimal, featherweight desktop companion without manual movement buttons or bloated embedded dashboards.
-- Full 10-module website management dashboard.
-- Calibrated 15-class multilingual sentiment intelligence with factual 89.13% accuracy and 100% Tamil precision.
+## 2. Production Build & Windows Executable Checks
+- **Web Admin Dashboard (`dashboard/`)**: `npm run build` (`tsc && vite build`) exited `0` (`dist/assets/index-Ce4RmHSp.js`, `242.56 kB`).
+- **Desktop Bundle & Tauri Release (`desktop/`)**: `npx tauri build --bundles nsis,msi` exited `0`:
+  - `vcamp-desktop.exe`: `82,114,560` bytes (`SHA256=0C59B8FC8F9542BEEF8DC4E67903278E3B3CED5D37CD0DAEE0F69FBA735B9591`)
+  - `VCamp-Setup.exe`: `69,635,479` bytes (`SHA256=B4E4969B7C5EDE9F16C244267E52F67B6D9C8F65128023D410D0B5457F74F182`)
+  - `VCamp-Setup.msi`: `73,940,992` bytes (`SHA256=5FA59383BDA06B88F13E695FD808ADB8374027AEC461051BD4596E863D0B21A0`)
+- **PE Header Subsystem Check**: Verified `Subsystem = 2` (Windows GUI, no console window spawns).
+- **Executable Smoke Test**: Launched `release/vcamp-desktop.exe`, verified process remained alive cleanly after 4 seconds (`AliveAfter4s=True`), and terminated cleanly.
+- **Note on Live Network Server Suites**: `tests/test_data_isolation.py` and `tests/test_sentiment_evaluation.py` expect an external running HTTP server at `http://127.0.0.1:8000/api` and were not run standalone; their tenant isolation, RBAC, and 46-sample evaluation assertions are covered in `tests/test_backend_api.py`.

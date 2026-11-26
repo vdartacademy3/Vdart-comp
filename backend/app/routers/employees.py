@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.user import Employee, EmployeeRole, AuditLog
 from ..schemas.employee import EmployeeResponse, EmployeeUpdate
-from ..schemas.auth import RegisterRequest
+from ..schemas.auth import AdminCreateEmployeeRequest
 from ..auth.security import hash_password
 from ..auth.dependencies import get_current_employee, require_admin, require_super_admin
 
@@ -20,7 +20,7 @@ def list_employees(
 
 @router.post("", response_model=EmployeeResponse)
 def create_employee(
-    request: RegisterRequest,
+    request: AdminCreateEmployeeRequest,
     current_employee: Employee = Depends(require_admin),
     db: Session = Depends(get_db)
 ):

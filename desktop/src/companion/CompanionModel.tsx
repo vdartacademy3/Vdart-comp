@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useCompanionStore, CompanionState, CompanionAction, RobotEmotion } from '../stores/companionStore';
 import { desktopMovementService } from '../services/desktopMovementService';
+import { animationController } from '../services/animationController';
 
 interface CompanionModelProps {
   pointerPosition?: { x: number; y: number };
@@ -167,10 +168,28 @@ export const CompanionModel: React.FC<CompanionModelProps> = ({ pointerPosition 
     if (!groupRef.current) return;
 
     // Effective active state & active emotion
-    const action: CompanionAction | string = isRecording 
-      ? 'listen' 
-      : isSpeaking 
-      ? 'speak' 
+    const ctrlState = animationController.getState();
+    let studioMappedAction: string | null = null;
+    if (ctrlState.isStudioPreview) {
+      switch (ctrlState.activeState) {
+        case 'WALK': studioMappedAction = 'walk'; break;
+        case 'RUN': studioMappedAction = 'run'; break;
+        case 'JUMP': studioMappedAction = 'jump'; break;
+        case 'WAVE': studioMappedAction = 'greet'; break;
+        case 'DANCE':
+        case 'LAUGH':
+        case 'LAUGH_HARD': studioMappedAction = 'play'; break;
+        case 'TALK':
+        case 'TALK_GESTURE': studioMappedAction = 'speak'; break;
+        default: studioMappedAction = 'idle'; break;
+      }
+    }
+    const action: CompanionAction | string = studioMappedAction
+      ? studioMappedAction
+      : isRecording
+      ? 'listen'
+      : isSpeaking
+      ? 'speak'
       : currentAction || state;
 
     const emotion: RobotEmotion = currentEmotion || 'neutral';
